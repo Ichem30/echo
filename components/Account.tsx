@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons'
 import { Session } from '@supabase/supabase-js'
 import React, { useEffect, useState } from 'react'
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import Avatar from '../app/components/Avatar'
 import UserProfileModal from '../app/components/UserProfileModal'
 import { supabase } from '../utils/supabase'
@@ -113,7 +114,12 @@ export default function Account({ session }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Mon Profil</Text>
+        <Text style={styles.headerSubtitle}>Gérez vos informations personnelles</Text>
+      </View>
+
       <View style={styles.avatarContainer}>
         <Avatar
           size={150}
@@ -125,40 +131,50 @@ export default function Account({ session }: Props) {
         />
       </View>
 
-      <View style={[styles.verticallySpaced, styles.mt20]}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput style={styles.input} value={session?.user?.email} editable={false} />
-      </View>
-      <View style={styles.verticallySpaced}>
-        <Text style={styles.label}>Nom d&apos;utilisateur</Text>
-        <TextInput
-          style={styles.input}
-          value={username || ''}
-          onChangeText={(text) => setUsername(text)}
-        />
-      </View>
+      <View style={styles.formContainer}>
+        <View style={styles.inputContainer}>
+          <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput 
+            style={styles.input} 
+            value={session?.user?.email} 
+            editable={false}
+            placeholder="Email"
+            placeholderTextColor="#666"
+          />
+        </View>
 
-      <View style={[styles.verticallySpaced, styles.mt20]}>
+        <View style={styles.inputContainer}>
+          <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            value={username || ''}
+            onChangeText={(text) => setUsername(text)}
+            placeholder="Nom d'utilisateur"
+            placeholderTextColor="#666"
+          />
+        </View>
+
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
           onPress={() => updateProfile({ username, avatar_url: avatarUrl })}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>{loading ? 'Mise à jour...' : 'Mettre à jour'}</Text>
+          <Text style={styles.buttonText}>
+            {loading ? 'Mise à jour...' : 'Mettre à jour'}
+          </Text>
         </TouchableOpacity>
-      </View>
 
-      <View style={[styles.verticallySpaced, styles.mt20]}>
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: '#4CAF50' }]}
+          style={[styles.buttonOutline]}
           onPress={() => setShowProfileModal(true)}
         >
-          <Text style={styles.buttonText}>Présentation</Text>
+          <Text style={styles.buttonOutlineText}>Modifier ma présentation</Text>
         </TouchableOpacity>
-      </View>
 
-      <View style={styles.verticallySpaced}>
-        <TouchableOpacity style={styles.button} onPress={handleSignOut}>
+        <TouchableOpacity 
+          style={[styles.buttonDanger]} 
+          onPress={handleSignOut}
+        >
           <Text style={styles.buttonText}>Se déconnecter</Text>
         </TouchableOpacity>
       </View>
@@ -168,52 +184,89 @@ export default function Account({ session }: Props) {
         onClose={handleProfileUpdate}
         existingProfile={userProfile}
       />
-    </View>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 40,
-    padding: 12,
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    padding: 20,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginBottom: 5,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
   avatarContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginVertical: 20,
   },
-  verticallySpaced: {
-    paddingTop: 4,
-    paddingBottom: 4,
-    alignSelf: 'stretch',
+  formContainer: {
+    padding: 20,
   },
-  mt20: {
-    marginTop: 20,
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    marginBottom: 15,
+    paddingHorizontal: 15,
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginTop: 5,
-  },
-  label: {
+    flex: 1,
+    paddingVertical: 15,
     fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 5,
+    color: '#333',
   },
   button: {
-    backgroundColor: '#2089dc',
-    padding: 10,
-    borderRadius: 5,
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 12,
     alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonOutline: {
+    backgroundColor: 'transparent',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    marginTop: 10,
+  },
+  buttonDanger: {
+    backgroundColor: '#FF3B30',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
   },
   buttonDisabled: {
-    backgroundColor: '#cccccc',
+    opacity: 0.7,
   },
   buttonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
   },
+  buttonOutlineText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  }
 })
