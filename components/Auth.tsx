@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import React, { useState } from 'react'
-import { Alert, AppState, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { Alert, AppState, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { supabase } from '../utils/supabase'
 
 // Tells Supabase Auth to continuously refresh the session automatically if
@@ -96,8 +96,10 @@ export default function Auth() {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../assets/images/icon.png')}
+          <MaterialCommunityIcons
+            name="robot-happy"
+            size={100}
+            color="#007AFF"
             style={styles.logo}
           />
           <Text style={styles.title}>Echo</Text>
@@ -193,9 +195,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 10,
+    marginBottom: 20,
   },
   title: {
     fontSize: 32,
