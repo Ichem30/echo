@@ -1,13 +1,27 @@
 import { Session } from '@supabase/supabase-js'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import UserProfileModal from '../app/components/UserProfileModal'
 import { supabase } from '../utils/supabase'
 
-export default function Account({ session }: { session: Session }) {
+type Props = {
+  session: Session
+}
+
+type UserProfile = {
+  name: string
+  age: string
+  interests: string
+  profession: string
+}
+
+export default function Account({ session }: Props) {
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState('')
   const [website, setWebsite] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
     if (session) getProfile()
@@ -20,7 +34,7 @@ export default function Account({ session }: { session: Session }) {
 
       const { data, error, status } = await supabase
         .from('profiles')
-        .select(`username, website, avatar_url`)
+        .select(`username, website, avatar_url, name, age, profession, interests`)
         .eq('id', session?.user.id)
         .single()
       if (error && status !== 406) {
@@ -31,6 +45,12 @@ export default function Account({ session }: { session: Session }) {
         setUsername(data.username)
         setWebsite(data.website)
         setAvatarUrl(data.avatar_url)
+        setUserProfile({
+          name: data.name,
+          age: data.age,
+          profession: data.profession,
+          interests: data.interests
+        })
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -76,22 +96,27 @@ export default function Account({ session }: { session: Session }) {
     }
   }
 
+  const handleProfileUpdate = () => {
+    setShowProfileModal(false)
+    getProfile()
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+  }
+
   return (
     <View style={styles.container}>
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={session?.user?.email}
-          editable={false}
-        />
+        <TextInput style={styles.input} value={session?.user?.email} editable={false} />
       </View>
       <View style={styles.verticallySpaced}>
         <Text style={styles.label}>Username</Text>
         <TextInput
           style={styles.input}
           value={username || ''}
-          onChangeText={(text: string) => setUsername(text)}
+          onChangeText={(text) => setUsername(text)}
         />
       </View>
       <View style={styles.verticallySpaced}>
@@ -99,7 +124,7 @@ export default function Account({ session }: { session: Session }) {
         <TextInput
           style={styles.input}
           value={website || ''}
-          onChangeText={(text: string) => setWebsite(text)}
+          onChangeText={(text) => setWebsite(text)}
         />
       </View>
 
@@ -116,11 +141,26 @@ export default function Account({ session }: { session: Session }) {
       <View style={styles.verticallySpaced}>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => supabase.auth.signOut()}
+          onPress={handleSignOut}
         >
           <Text style={styles.buttonText}>Sign Out</Text>
         </TouchableOpacity>
       </View>
+
+      <View style={[styles.verticallySpaced, styles.mt20]}>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: '#4CAF50' }]}
+          onPress={() => setShowProfileModal(true)}
+        >
+          <Text style={styles.buttonText}>Présentation</Text>
+        </TouchableOpacity>
+      </View>
+
+      <UserProfileModal
+        visible={showProfileModal}
+        onClose={handleProfileUpdate}
+        existingProfile={userProfile}
+      />
     </View>
   )
 }
@@ -164,5 +204,5 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
-  }
+  },
 })

@@ -17,6 +17,8 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from '../../utils/supabase';
+import UserProfileModal from '../components/UserProfileModal';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -45,8 +47,61 @@ export default function ChatMobile() {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setShowProfileModal(true);
+        return;
+      }
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !profile || !profile.name) {
+        // Si pas de profil ou profil incomplet, on montre la modale
+        setShowProfileModal(true);
+      } else {
+        setUserProfile(profile);
+        setShowProfileModal(false);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du profil:', error);
+      setShowProfileModal(true);
+    }
+  };
+
+  const handleProfileSubmit = () => {
+    setShowProfileModal(false);
+    fetchUserProfile();
+  };
+
+  // Modifier le SYSTEM_MESSAGE pour inclure les informations du profil
+  const getSystemMessage = () => {
+    if (!userProfile) return SYSTEM_MESSAGE;
+
+    return {
+      role: "system" as const,
+      content: `You are a helpful assistant. Here's some context about the user you're talking to:
+      - Name: ${userProfile.name}
+      - Age: ${userProfile.age}
+      - Profession: ${userProfile.profession}
+      - Interests: ${userProfile.interests}
+      Please adapt your responses to be personalized and relevant to their profile.`
+    };
+  };
 
   const handleError = async (error: any) => {
     console.error("Error:", error);
@@ -115,7 +170,7 @@ export default function ChatMobile() {
     Keyboard.dismiss();
 
     const apiMessages = [
-      SYSTEM_MESSAGE,
+      getSystemMessage(),
       ...messages.map(msg => ({
         role: msg.role,
         content: msg.content
@@ -169,6 +224,10 @@ export default function ChatMobile() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <UserProfileModal
+        visible={showProfileModal}
+        onClose={handleProfileSubmit}
+      />
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
