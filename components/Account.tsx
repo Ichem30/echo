@@ -19,7 +19,6 @@ type UserProfile = {
 export default function Account({ session }: Props) {
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState('')
-  const [website, setWebsite] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -35,7 +34,7 @@ export default function Account({ session }: Props) {
 
       const { data, error, status } = await supabase
         .from('profiles')
-        .select(`username, website, avatar_url, name, age, profession, interests`)
+        .select(`username, avatar_url, name, age, profession, interests`)
         .eq('id', session?.user.id)
         .single()
       if (error && status !== 406) {
@@ -44,7 +43,6 @@ export default function Account({ session }: Props) {
 
       if (data) {
         setUsername(data.username)
-        setWebsite(data.website)
         setAvatarUrl(data.avatar_url)
         setUserProfile({
           name: data.name,
@@ -64,11 +62,9 @@ export default function Account({ session }: Props) {
 
   async function updateProfile({
     username,
-    website,
     avatar_url,
   }: {
     username: string
-    website: string
     avatar_url: string
   }) {
     try {
@@ -78,7 +74,6 @@ export default function Account({ session }: Props) {
       const updates = {
         id: session?.user.id,
         username,
-        website,
         avatar_url,
         updated_at: new Date(),
       }
@@ -125,7 +120,7 @@ export default function Account({ session }: Props) {
           url={avatarUrl}
           onUpload={(url: string) => {
             setAvatarUrl(url)
-            updateProfile({ username, website, avatar_url: url })
+            updateProfile({ username, avatar_url: url })
           }}
         />
       </View>
@@ -135,26 +130,18 @@ export default function Account({ session }: Props) {
         <TextInput style={styles.input} value={session?.user?.email} editable={false} />
       </View>
       <View style={styles.verticallySpaced}>
-        <Text style={styles.label}>Nom d'utilisateur</Text>
+        <Text style={styles.label}>Nom d&apos;utilisateur</Text>
         <TextInput
           style={styles.input}
           value={username || ''}
           onChangeText={(text) => setUsername(text)}
         />
       </View>
-      <View style={styles.verticallySpaced}>
-        <Text style={styles.label}>Site web</Text>
-        <TextInput
-          style={styles.input}
-          value={website || ''}
-          onChangeText={(text) => setWebsite(text)}
-        />
-      </View>
 
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={() => updateProfile({ username, website, avatar_url: avatarUrl })}
+          onPress={() => updateProfile({ username, avatar_url: avatarUrl })}
           disabled={loading}
         >
           <Text style={styles.buttonText}>{loading ? 'Mise à jour...' : 'Mettre à jour'}</Text>
