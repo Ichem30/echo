@@ -1,7 +1,8 @@
+import { useColorScheme } from '@/hooks/useColorScheme'
 import { Ionicons } from '@expo/vector-icons'
 import { Session } from '@supabase/supabase-js'
 import React, { useEffect, useState } from 'react'
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { Alert, Animated, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import Avatar from '../app/components/Avatar'
 import UserProfileModal from '../app/components/UserProfileModal'
 import { supabase } from '../utils/supabase'
@@ -25,7 +26,9 @@ export default function Account({ session }: Props) {
   const [avatarUrl, setAvatarUrl] = useState('')
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const { theme } = React.useContext(ThemeContext)
+  const { theme, isDarkMode, toggleDarkMode } = React.useContext(ThemeContext)
+  const colorScheme = useColorScheme()
+  const switchAnim = React.useRef(new Animated.Value(isDarkMode ? 1 : 0)).current
 
   useEffect(() => {
     if (session) getProfile()
@@ -116,22 +119,75 @@ export default function Account({ session }: Props) {
     await supabase.auth.signOut()
   }
 
+  const toggleSwitch = () => {
+    const newValue = !isDarkMode
+    Animated.spring(switchAnim, {
+      toValue: newValue ? 1 : 0,
+      useNativeDriver: true,
+    }).start()
+    toggleDarkMode(newValue)
+  }
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background }]}>
+        <View style={styles.themeSwitchContainer}>
+          <TouchableOpacity
+            style={[
+              styles.themeSwitch,
+              {
+                backgroundColor: isDarkMode ? '#1a1a1a' : '#e0e0e0',
+                borderColor: isDarkMode ? '#333' : '#ccc',
+              }
+            ]}
+            onPress={toggleSwitch}
+            activeOpacity={0.9}>
+            <View style={styles.switchIconContainer}>
+              <Ionicons
+                name="sunny"
+                size={16}
+                color={isDarkMode ? '#666' : theme.primary}
+                style={[styles.switchIcon, { opacity: isDarkMode ? 0.5 : 1 }]}
+              />
+            </View>
+            <View style={styles.switchIconContainer}>
+              <Ionicons
+                name="moon"
+                size={16}
+                color={isDarkMode ? theme.primary : '#666'}
+                style={[styles.switchIcon, { opacity: isDarkMode ? 1 : 0.5 }]}
+              />
+            </View>
+            <Animated.View
+              style={[
+                styles.switchKnob,
+                {
+                  backgroundColor: isDarkMode ? '#333' : '#fff',
+                  transform: [{
+                    translateX: switchAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [2, 32]
+                    })
+                  }]
+                }
+              ]}
+            />
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.avatarContainer}>
+          <Avatar
+            size={200}
+            url={avatarUrl}
+            onUpload={(url: string) => {
+              setAvatarUrl(url)
+              updateProfile({ username, avatar_url: url })
+            }}
+          />
+        </View>
+
         <Text style={[styles.headerTitle, { color: theme.primary }]}>Mon Profil</Text>
         <Text style={[styles.headerSubtitle, { color: theme.secondary }]}>Gérez vos informations personnelles</Text>
-      </View>
-
-      <View style={styles.avatarContainer}>
-        <Avatar
-          size={150}
-          url={avatarUrl}
-          onUpload={(url: string) => {
-            setAvatarUrl(url)
-            updateProfile({ username, avatar_url: url })
-          }}
-        />
       </View>
 
       <View style={styles.formContainer}>
@@ -273,5 +329,50 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontSize: 16,
     fontWeight: 'bold',
-  }
+  },
+  themeSwitchContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    padding: 5,
+    borderRadius: 20,
+    zIndex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  themeSwitch: {
+    width: 64,
+    height: 32,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    borderWidth: 1,
+  },
+  switchIconContainer: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  switchIcon: {
+    zIndex: 2,
+  },
+  switchKnob: {
+    position: 'absolute',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    zIndex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
 })

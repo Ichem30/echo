@@ -50,8 +50,12 @@ export const ThemeContext = createContext<{
   theme: Theme;
   themeName: ThemeName;
   setTheme: (name: ThemeName) => void;
+  isDarkMode: boolean;
+  toggleDarkMode: (value: boolean) => void;
 }>({
   theme: themes.default,
   themeName: 'default',
   setTheme: () => {},
+  isDarkMode: false,
+  toggleDarkMode: () => {},
 }); 
