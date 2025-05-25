@@ -5,6 +5,8 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import Avatar from '../app/components/Avatar'
 import UserProfileModal from '../app/components/UserProfileModal'
 import { supabase } from '../utils/supabase'
+import { ThemeContext } from '../utils/theme'
+import { ThemeSelector } from './ThemeSelector'
 
 type Props = {
   session: Session
@@ -23,6 +25,7 @@ export default function Account({ session }: Props) {
   const [avatarUrl, setAvatarUrl] = useState('')
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const { theme } = React.useContext(ThemeContext)
 
   useEffect(() => {
     if (session) getProfile()
@@ -114,10 +117,10 @@ export default function Account({ session }: Props) {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mon Profil</Text>
-        <Text style={styles.headerSubtitle}>Gérez vos informations personnelles</Text>
+        <Text style={[styles.headerTitle, { color: theme.primary }]}>Mon Profil</Text>
+        <Text style={[styles.headerSubtitle, { color: theme.secondary }]}>Gérez vos informations personnelles</Text>
       </View>
 
       <View style={styles.avatarContainer}>
@@ -132,30 +135,30 @@ export default function Account({ session }: Props) {
       </View>
 
       <View style={styles.formContainer}>
-        <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
+          <Ionicons name="mail-outline" size={20} color={theme.secondary} style={styles.inputIcon} />
           <TextInput 
-            style={styles.input} 
+            style={[styles.input, { color: theme.text }]} 
             value={session?.user?.email} 
             editable={false}
             placeholder="Email"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.secondary}
           />
         </View>
 
-        <View style={styles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
+          <Ionicons name="person-outline" size={20} color={theme.secondary} style={styles.inputIcon} />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: theme.text }]}
             value={username || ''}
             onChangeText={(text) => setUsername(text)}
             placeholder="Nom d'utilisateur"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.secondary}
           />
         </View>
 
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+          style={[styles.button, { backgroundColor: theme.primary }, loading && styles.buttonDisabled]}
           onPress={() => updateProfile({ username, avatar_url: avatarUrl })}
           disabled={loading}
         >
@@ -165,14 +168,16 @@ export default function Account({ session }: Props) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.buttonOutline]}
+          style={[styles.buttonOutline, { borderColor: theme.primary }]}
           onPress={() => setShowProfileModal(true)}
         >
-          <Text style={styles.buttonOutlineText}>Modifier ma présentation</Text>
+          <Text style={[styles.buttonOutlineText, { color: theme.primary }]}>Modifier ma présentation</Text>
         </TouchableOpacity>
 
+        <ThemeSelector />
+
         <TouchableOpacity 
-          style={[styles.buttonDanger]} 
+          style={[styles.buttonDanger, { backgroundColor: theme.danger }]} 
           onPress={handleSignOut}
         >
           <Text style={styles.buttonText}>Se déconnecter</Text>

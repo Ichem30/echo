@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../utils/supabase';
+import { ThemeContext } from '../../utils/theme';
 import UserProfileModal from '../components/UserProfileModal';
 
 const { width } = Dimensions.get('window');
@@ -51,6 +52,8 @@ export default function ChatMobile() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
+
+  const { theme } = React.useContext(ThemeContext);
 
   useEffect(() => {
     fetchUserProfile();
@@ -220,7 +223,7 @@ export default function ChatMobile() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <UserProfileModal
         visible={showProfileModal}
         onClose={handleProfileSubmit}
@@ -239,18 +242,18 @@ export default function ChatMobile() {
               styles.message,
               {
                 marginLeft: item.role === "user" ? 'auto' : 0,
-                backgroundColor: item.role === "user" ? '#007AFF' : '#E9E9EB'
+                backgroundColor: item.role === "user" ? theme.primary : theme.inputBackground
               }
             ]}>
               <Text style={[
                 styles.messageText,
-                { color: item.role === "user" ? 'white' : 'black' }
+                { color: item.role === "user" ? 'white' : theme.text }
               ]}>
                 {item.content}
               </Text>
               <Text style={[
                 styles.timestamp,
-                { color: item.role === "user" ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)' }
+                { color: item.role === "user" ? 'rgba(255,255,255,0.7)' : theme.secondary }
               ]}>
                 {formatTime(item.timestamp)}
               </Text>
@@ -259,35 +262,31 @@ export default function ChatMobile() {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
 
-        <View style={styles.footer}>
-          <View style={styles.inputContainer}>
-            <TextInput
-              ref={inputRef}
-              placeholder="Message..."
-              style={styles.input}
-              value={inputMessage}
-              onChangeText={setInputMessage}
-              multiline
-              maxLength={1000}
-              returnKeyType="send"
-              onSubmitEditing={onSend}
-              enablesReturnKeyAutomatically
-            />
+        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
+          <TextInput
+            ref={inputRef}
+            style={[styles.input, { color: theme.text }]}
+            value={inputMessage}
+            onChangeText={setInputMessage}
+            placeholder="Tapez votre message..."
+            placeholderTextColor={theme.secondary}
+            multiline
+          />
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              { backgroundColor: theme.primary },
+              (!inputMessage.trim() || isLoading) && styles.sendButtonDisabled
+            ]}
+            onPress={onSend}
+            disabled={!inputMessage.trim() || isLoading}
+          >
             {isLoading ? (
-              <ActivityIndicator style={styles.sendButton} color="#007AFF" />
+              <ActivityIndicator color="white" />
             ) : (
-              <TouchableOpacity 
-                onPress={onSend}
-                disabled={!inputMessage.trim()}
-                style={[
-                  styles.sendButton,
-                  { opacity: !inputMessage.trim() ? 0.5 : 1 }
-                ]}
-              >
-                <Ionicons name="send" size={24} color="#007AFF" />
-              </TouchableOpacity>
+              <Ionicons name="send" size={24} color="white" />
             )}
-          </View>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -297,57 +296,47 @@ export default function ChatMobile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   messageList: {
-    gap: 10,
-    padding: 10,
-    paddingBottom: 20,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    marginHorizontal: 10,
-    marginBottom: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    maxHeight: 100,
-    minHeight: 40,
-    paddingRight: 10,
-    paddingTop: 10,
-    paddingBottom: 10,
-  },
-  footer: {
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
-    paddingTop: 10,
+    padding: 15,
   },
   message: {
+    maxWidth: '80%',
     padding: 12,
     borderRadius: 20,
-    maxWidth: width * 0.75,
-    minWidth: 60,
+    marginBottom: 10,
   },
   messageText: {
     fontSize: 16,
-    lineHeight: 22,
+    marginBottom: 4,
   },
   timestamp: {
-    fontSize: 11,
-    marginTop: 4,
+    fontSize: 12,
     alignSelf: 'flex-end',
   },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 10,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  input: {
+    flex: 1,
+    marginRight: 10,
+    padding: 10,
+    borderRadius: 20,
+    maxHeight: 100,
+    fontSize: 16,
+  },
   sendButton: {
-    width: 35,
-    height: 35,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-  }
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
+  },
 });

@@ -1,7 +1,9 @@
 import * as ImagePicker from 'expo-image-picker'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Alert, Button, Image, StyleSheet, View } from 'react-native'
 import { supabase } from '../../utils/supabase'
+import { ThemeContext } from '../../utils/theme'
+
 
 interface Props {
   size: number
@@ -13,6 +15,7 @@ export default function Avatar({ url, size = 150, onUpload }: Props) {
   const [uploading, setUploading] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const avatarSize = { height: size, width: size }
+  const { theme } = React.useContext(ThemeContext)
 
   useEffect(() => {
     if (url) downloadImage(url)
@@ -98,16 +101,17 @@ export default function Avatar({ url, size = 150, onUpload }: Props) {
         <Image
           source={{ uri: avatarUrl }}
           accessibilityLabel="Avatar"
-          style={[avatarSize, styles.avatar, styles.image]}
+          style={[avatarSize, styles.avatar, styles.image, { borderColor: theme.primary }]}
         />
       ) : (
-        <View style={[avatarSize, styles.avatar, styles.noImage]} />
+        <View style={[avatarSize, styles.avatar, styles.noImage, { borderColor: theme.primary }]} />
       )}
       <View style={styles.buttonContainer}>
         <Button
           title={uploading ? 'Envoi en cours...' : 'Changer la photo'}
           onPress={uploadAvatar}
           disabled={uploading}
+          color={theme.primary}
         />
       </View>
     </View>
