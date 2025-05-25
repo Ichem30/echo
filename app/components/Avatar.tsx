@@ -120,6 +120,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     maxWidth: '100%',
     marginBottom: 10,
+    borderWidth: 3,
+    borderColor: '#007AFF',
   },
   image: {
     objectFit: 'cover',
