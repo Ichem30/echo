@@ -1,6 +1,7 @@
 import { Session } from '@supabase/supabase-js'
 import React, { useEffect, useState } from 'react'
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import Avatar from '../app/components/Avatar'
 import UserProfileModal from '../app/components/UserProfileModal'
 import { supabase } from '../utils/supabase'
 
@@ -87,9 +88,20 @@ export default function Account({ session }: Props) {
       if (error) {
         throw error
       }
+
+      Alert.alert(
+        'Succès',
+        'Votre profil a été mis à jour avec succès !',
+        [{ text: 'OK' }]
+      )
+
     } catch (error) {
       if (error instanceof Error) {
-        Alert.alert(error.message)
+        Alert.alert(
+          'Erreur',
+          'Impossible de mettre à jour le profil : ' + error.message,
+          [{ text: 'OK' }]
+        )
       }
     } finally {
       setLoading(false)
@@ -107,12 +119,23 @@ export default function Account({ session }: Props) {
 
   return (
     <View style={styles.container}>
+      <View style={styles.avatarContainer}>
+        <Avatar
+          size={150}
+          url={avatarUrl}
+          onUpload={(url: string) => {
+            setAvatarUrl(url)
+            updateProfile({ username, website, avatar_url: url })
+          }}
+        />
+      </View>
+
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <Text style={styles.label}>Email</Text>
         <TextInput style={styles.input} value={session?.user?.email} editable={false} />
       </View>
       <View style={styles.verticallySpaced}>
-        <Text style={styles.label}>Username</Text>
+        <Text style={styles.label}>Nom d'utilisateur</Text>
         <TextInput
           style={styles.input}
           value={username || ''}
@@ -120,7 +143,7 @@ export default function Account({ session }: Props) {
         />
       </View>
       <View style={styles.verticallySpaced}>
-        <Text style={styles.label}>Website</Text>
+        <Text style={styles.label}>Site web</Text>
         <TextInput
           style={styles.input}
           value={website || ''}
@@ -134,16 +157,7 @@ export default function Account({ session }: Props) {
           onPress={() => updateProfile({ username, website, avatar_url: avatarUrl })}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>{loading ? 'Loading ...' : 'Update'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.verticallySpaced}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleSignOut}
-        >
-          <Text style={styles.buttonText}>Sign Out</Text>
+          <Text style={styles.buttonText}>{loading ? 'Mise à jour...' : 'Mettre à jour'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -153,6 +167,12 @@ export default function Account({ session }: Props) {
           onPress={() => setShowProfileModal(true)}
         >
           <Text style={styles.buttonText}>Présentation</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.verticallySpaced}>
+        <TouchableOpacity style={styles.button} onPress={handleSignOut}>
+          <Text style={styles.buttonText}>Se déconnecter</Text>
         </TouchableOpacity>
       </View>
 
@@ -169,6 +189,10 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 40,
     padding: 12,
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
   verticallySpaced: {
     paddingTop: 4,
