@@ -5,17 +5,40 @@ import { supabase } from '../../utils/supabase';
 
 export default function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
+  const [userName, setUserName] = useState<string>('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      }
     });
   }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+      if (profile?.name) {
+        setUserName(profile.name);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du profil:', error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Bienvenue {session?.user?.email}</Text>
+        <Text style={styles.title}>
+          Bienvenue {userName || 'utilisateur'}
+        </Text>
         <Text style={styles.subtitle}>
           Explorez notre application avec :
         </Text>
