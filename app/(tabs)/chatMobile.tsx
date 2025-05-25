@@ -3,18 +3,18 @@ import * as Haptics from 'expo-haptics';
 import OpenAI from 'openai';
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../utils/supabase';
@@ -47,7 +47,7 @@ export default function ChatMobile() {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -60,7 +60,6 @@ export default function ChatMobile() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setShowProfileModal(true);
         return;
       }
 
@@ -71,7 +70,6 @@ export default function ChatMobile() {
         .single();
 
       if (error || !profile || !profile.name) {
-        // Si pas de profil ou profil incomplet, on montre la modale
         setShowProfileModal(true);
       } else {
         setUserProfile(profile);
@@ -79,7 +77,6 @@ export default function ChatMobile() {
       }
     } catch (error) {
       console.error('Erreur lors de la récupération du profil:', error);
-      setShowProfileModal(true);
     }
   };
 
