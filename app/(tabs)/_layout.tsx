@@ -1,15 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
+import { useContext } from 'react';
 import { Platform } from 'react-native';
+import { ThemeContext } from '../../utils/theme';
 
 export default function TabLayout() {
+  const { theme, isDarkMode } = useContext(ThemeContext);
+
   return (
     <Tabs
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: theme.background,
           shadowColor: '#000',
           shadowOffset: {
             width: 0,
@@ -22,19 +26,19 @@ export default function TabLayout() {
         headerTitleStyle: {
           fontWeight: '600',
           fontSize: 18,
-          color: '#000',
+          color: theme.text,
         },
         headerTitleAlign: 'center',
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: Platform.OS === 'ios' ? 'transparent' : 'rgba(255, 255, 255, 0.95)',
+          backgroundColor: Platform.OS === 'ios' ? (isDarkMode ? '#000000' : 'transparent') : theme.background,
           borderTopWidth: 0,
           elevation: 0,
           height: 85,
           paddingBottom: 20,
         },
         tabBarBackground: () =>
-          Platform.OS === 'ios' ? (
+          Platform.OS === 'ios' && !isDarkMode ? (
             <BlurView
               tint="light"
               intensity={95}
@@ -47,8 +51,8 @@ export default function TabLayout() {
               }}
             />
           ) : null,
-        tabBarActiveTintColor: '#0A84FF',
-        tabBarInactiveTintColor: '#8E8E93',
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.secondary,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',

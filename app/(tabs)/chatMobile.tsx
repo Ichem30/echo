@@ -3,18 +3,18 @@ import * as Haptics from 'expo-haptics';
 import OpenAI from 'openai';
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../utils/supabase';
@@ -223,78 +223,78 @@ export default function ChatMobile() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top']}>
       <UserProfileModal
         visible={showProfileModal}
         onClose={handleProfileSubmit}
       />
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.container}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 120 : 90}
-      >
-        <View style={styles.innerContainer}>
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            contentContainerStyle={[styles.messageList, { paddingBottom: 20 }]}
-            renderItem={({ item }) => (
-              <View style={[
-                styles.message,
-                {
-                  marginLeft: item.role === "user" ? 'auto' : 0,
-                  backgroundColor: item.role === "user" ? theme.primary : theme.inputBackground
-                }
+      <View style={styles.container}>
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          contentContainerStyle={styles.messageList}
+          renderItem={({ item }) => (
+            <View style={[
+              styles.message,
+              {
+                marginLeft: item.role === "user" ? 'auto' : 0,
+                backgroundColor: item.role === "user" ? theme.primary : theme.inputBackground
+              }
+            ]}>
+              <Text style={[
+                styles.messageText,
+                { color: item.role === "user" ? 'white' : theme.text }
               ]}>
-                <Text style={[
-                  styles.messageText,
-                  { color: item.role === "user" ? 'white' : theme.text }
-                ]}>
-                  {item.content}
-                </Text>
-                <Text style={[
-                  styles.timestamp,
-                  { color: item.role === "user" ? 'rgba(255,255,255,0.7)' : theme.secondary }
-                ]}>
-                  {formatTime(item.timestamp)}
-                </Text>
-              </View>
-            )}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          />
+                {item.content}
+              </Text>
+              <Text style={[
+                styles.timestamp,
+                { color: item.role === "user" ? 'rgba(255,255,255,0.7)' : theme.secondary }
+              ]}>
+                {formatTime(item.timestamp)}
+              </Text>
+            </View>
+          )}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        />
+      </View>
 
-          <View style={[styles.inputContainer, { backgroundColor: theme.background }]}>
-            <TextInput
-              ref={inputRef}
-              style={[
-                styles.input,
-                {
-                  color: theme.text,
-                  backgroundColor: theme.inputBackground,
-                }
-              ]}
-              value={inputMessage}
-              onChangeText={setInputMessage}
-              placeholder="Message"
-              placeholderTextColor={theme.secondary}
-              multiline
-            />
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                { backgroundColor: theme.primary },
-                (!inputMessage.trim() || isLoading) && styles.sendButtonDisabled
-              ]}
-              onPress={onSend}
-              disabled={!inputMessage.trim() || isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Ionicons name="send" size={24} color="white" />
-              )}
-            </TouchableOpacity>
-          </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'position' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        style={styles.keyboardAvoid}
+      >
+        <View style={[styles.inputContainer, { backgroundColor: theme.background }]}>
+          <TextInput
+            ref={inputRef}
+            style={[
+              styles.input,
+              {
+                color: theme.text,
+                backgroundColor: theme.inputBackground,
+              }
+            ]}
+            value={inputMessage}
+            onChangeText={setInputMessage}
+            placeholder="Message"
+            placeholderTextColor={theme.secondary}
+            multiline
+          />
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              { backgroundColor: theme.primary },
+              (!inputMessage.trim() || isLoading) && styles.sendButtonDisabled
+            ]}
+            onPress={onSend}
+            disabled={!inputMessage.trim() || isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Ionicons name="send" size={24} color="white" />
+            )}
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -302,15 +302,15 @@ export default function ChatMobile() {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
-  innerContainer: {
-    flex: 1,
-    marginBottom: Platform.OS === 'ios' ? 85 : 65,
-  },
   messageList: {
     padding: 15,
+    paddingBottom: 100,
   },
   message: {
     maxWidth: '80%',
@@ -326,12 +326,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     alignSelf: 'flex-end',
   },
+  keyboardAvoid: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 90 : 70,
+    left: 0,
+    right: 0,
+    borderTopWidth: 0.5,
+    borderTopColor: '#E5E5E5',
+  },
   inputContainer: {
     flexDirection: 'row',
     padding: 10,
     alignItems: 'flex-end',
-    borderTopWidth: 0.5,
-    borderTopColor: '#E5E5E5',
   },
   input: {
     flex: 1,
