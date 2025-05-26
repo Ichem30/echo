@@ -231,62 +231,70 @@ export default function ChatMobile() {
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
-        keyboardVerticalOffset={90}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 120 : 90}
       >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          contentContainerStyle={styles.messageList}
-          renderItem={({ item }) => (
-            <View style={[
-              styles.message,
-              {
-                marginLeft: item.role === "user" ? 'auto' : 0,
-                backgroundColor: item.role === "user" ? theme.primary : theme.inputBackground
-              }
-            ]}>
-              <Text style={[
-                styles.messageText,
-                { color: item.role === "user" ? 'white' : theme.text }
+        <View style={styles.innerContainer}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            contentContainerStyle={[styles.messageList, { paddingBottom: 20 }]}
+            renderItem={({ item }) => (
+              <View style={[
+                styles.message,
+                {
+                  marginLeft: item.role === "user" ? 'auto' : 0,
+                  backgroundColor: item.role === "user" ? theme.primary : theme.inputBackground
+                }
               ]}>
-                {item.content}
-              </Text>
-              <Text style={[
-                styles.timestamp,
-                { color: item.role === "user" ? 'rgba(255,255,255,0.7)' : theme.secondary }
-              ]}>
-                {formatTime(item.timestamp)}
-              </Text>
-            </View>
-          )}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        />
-
-        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
-          <TextInput
-            ref={inputRef}
-            style={[styles.input, { color: theme.text }]}
-            value={inputMessage}
-            onChangeText={setInputMessage}
-            placeholder="Tapez votre message..."
-            placeholderTextColor={theme.secondary}
-            multiline
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              { backgroundColor: theme.primary },
-              (!inputMessage.trim() || isLoading) && styles.sendButtonDisabled
-            ]}
-            onPress={onSend}
-            disabled={!inputMessage.trim() || isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Ionicons name="send" size={24} color="white" />
+                <Text style={[
+                  styles.messageText,
+                  { color: item.role === "user" ? 'white' : theme.text }
+                ]}>
+                  {item.content}
+                </Text>
+                <Text style={[
+                  styles.timestamp,
+                  { color: item.role === "user" ? 'rgba(255,255,255,0.7)' : theme.secondary }
+                ]}>
+                  {formatTime(item.timestamp)}
+                </Text>
+              </View>
             )}
-          </TouchableOpacity>
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          />
+
+          <View style={[styles.inputContainer, { backgroundColor: theme.background }]}>
+            <TextInput
+              ref={inputRef}
+              style={[
+                styles.input,
+                {
+                  color: theme.text,
+                  backgroundColor: theme.inputBackground,
+                }
+              ]}
+              value={inputMessage}
+              onChangeText={setInputMessage}
+              placeholder="Message"
+              placeholderTextColor={theme.secondary}
+              multiline
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                { backgroundColor: theme.primary },
+                (!inputMessage.trim() || isLoading) && styles.sendButtonDisabled
+              ]}
+              onPress={onSend}
+              disabled={!inputMessage.trim() || isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Ionicons name="send" size={24} color="white" />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -296,6 +304,10 @@ export default function ChatMobile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  innerContainer: {
+    flex: 1,
+    marginBottom: Platform.OS === 'ios' ? 85 : 65,
   },
   messageList: {
     padding: 15,
@@ -317,24 +329,27 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     padding: 10,
-    alignItems: 'center',
-    borderTopWidth: 1,
+    alignItems: 'flex-end',
+    borderTopWidth: 0.5,
     borderTopColor: '#E5E5E5',
   },
   input: {
     flex: 1,
     marginRight: 10,
-    padding: 10,
+    padding: Platform.OS === 'ios' ? 12 : 10,
+    paddingTop: Platform.OS === 'ios' ? 12 : 10,
     borderRadius: 20,
     maxHeight: 100,
+    minHeight: 44,
     fontSize: 16,
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 3,
   },
   sendButtonDisabled: {
     opacity: 0.5,

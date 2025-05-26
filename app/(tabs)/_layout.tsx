@@ -8,6 +8,23 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: true,
+        headerStyle: {
+          backgroundColor: '#fff',
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: 1,
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: 1,
+          elevation: 1,
+        },
+        headerTitleStyle: {
+          fontWeight: '600',
+          fontSize: 18,
+          color: '#000',
+        },
+        headerTitleAlign: 'center',
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: Platform.OS === 'ios' ? 'transparent' : 'rgba(255, 255, 255, 0.95)',
@@ -32,13 +49,6 @@ export default function TabLayout() {
           ) : null,
         tabBarActiveTintColor: '#0A84FF',
         tabBarInactiveTintColor: '#8E8E93',
-        headerStyle: {
-          backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#fff',
-        },
-        headerTitleStyle: {
-          fontWeight: '600',
-          fontSize: 17,
-        },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',
