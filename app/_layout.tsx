@@ -4,6 +4,7 @@ import { useFonts } from 'expo-font';
 import { Redirect, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
 import 'react-native-reanimated';
 import { ThemeProvider } from '../components/ThemeProvider';
 import { supabase } from '../utils/supabase';
@@ -11,6 +12,7 @@ import { supabase } from '../utils/supabase';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function RootLayout() {
+  console.log('RootLayout: Initializing');
   const colorScheme = useColorScheme();
   const [session, setSession] = useState<Session | null>(null);
   const [loaded] = useFonts({
@@ -18,20 +20,28 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    console.log('RootLayout: Checking session');
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('RootLayout: Session status:', session ? 'logged in' : 'no session');
       setSession(session);
     });
 
     supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('RootLayout: Auth state changed:', _event);
       setSession(session);
     });
   }, []);
 
   if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
+    console.log('RootLayout: Fonts not loaded');
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Chargement des polices...</Text>
+      </View>
+    );
   }
 
+  console.log('RootLayout: Rendering main layout');
   return (
     <ThemeProvider>
       <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

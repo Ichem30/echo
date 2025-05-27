@@ -1,20 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import OpenAI from 'openai';
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../utils/supabase';
@@ -52,6 +53,7 @@ export default function ChatMobile() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
+  const tabBarHeight = useBottomTabBarHeight();
 
   const { theme } = React.useContext(ThemeContext);
 
@@ -232,7 +234,10 @@ export default function ChatMobile() {
         <FlatList
           ref={flatListRef}
           data={messages}
-          contentContainerStyle={styles.messageList}
+          contentContainerStyle={[
+            styles.messageList,
+            { paddingBottom: tabBarHeight + 60 }
+          ]}
           renderItem={({ item }) => (
             <View style={[
               styles.message,
@@ -260,9 +265,15 @@ export default function ChatMobile() {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'position' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-        style={styles.keyboardAvoid}
+        style={[
+          styles.inputWrapper,
+          {
+            bottom: tabBarHeight,
+            backgroundColor: theme.background
+          }
+        ]}
       >
         <View style={[styles.inputContainer, { backgroundColor: theme.background }]}>
           <TextInput
@@ -310,7 +321,6 @@ const styles = StyleSheet.create({
   },
   messageList: {
     padding: 15,
-    paddingBottom: 100,
   },
   message: {
     maxWidth: '80%',
@@ -326,9 +336,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     alignSelf: 'flex-end',
   },
-  keyboardAvoid: {
+  inputWrapper: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 90 : 70,
     left: 0,
     right: 0,
     borderTopWidth: 0.5,
