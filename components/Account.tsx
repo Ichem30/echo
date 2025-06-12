@@ -14,10 +14,19 @@ type Props = {
 }
 
 type UserProfile = {
-  name: string
-  age: string
-  interests: string
-  profession: string
+  name: string;
+  age: string | null;
+  interests: string | null;
+  profession: string | null;
+  daily_routine: string | null;
+  self_care_habits: string | null;
+  mood_triggers: string | null;
+  goals: string | null;
+  favorite_quotes: string | null;
+  personality_type: string | null;
+  sexual_orientation: string | null;
+  custom_orientation: string | null;
+  relationship_status: string | null;
 }
 
 export default function Account({ session }: Props) {
@@ -41,9 +50,26 @@ export default function Account({ session }: Props) {
 
       const { data, error, status } = await supabase
         .from('profiles')
-        .select(`username, avatar_url, name, age, profession, interests`)
+        .select(`
+          username, 
+          avatar_url, 
+          name, 
+          age, 
+          profession, 
+          interests,
+          daily_routine,
+          self_care_habits,
+          mood_triggers,
+          goals,
+          favorite_quotes,
+          personality_type,
+          sexual_orientation,
+          custom_orientation,
+          relationship_status
+        `)
         .eq('id', session?.user.id)
         .single()
+
       if (error && status !== 406) {
         throw error
       }
@@ -55,7 +81,16 @@ export default function Account({ session }: Props) {
           name: data.name,
           age: data.age,
           profession: data.profession,
-          interests: data.interests
+          interests: data.interests,
+          daily_routine: data.daily_routine,
+          self_care_habits: data.self_care_habits,
+          mood_triggers: data.mood_triggers,
+          goals: data.goals,
+          favorite_quotes: data.favorite_quotes,
+          personality_type: data.personality_type,
+          sexual_orientation: data.sexual_orientation,
+          custom_orientation: data.custom_orientation,
+          relationship_status: data.relationship_status
         })
       }
     } catch (error) {
