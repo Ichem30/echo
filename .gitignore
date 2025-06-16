@@ -34,9 +34,33 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
+
+# IDE
+.vscode/
+.cursor/
+.idea/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build
+build/
+dist/
+out/
+
+# Temporary files
+*.swp
+*.swo
+*~
 
 app-example
