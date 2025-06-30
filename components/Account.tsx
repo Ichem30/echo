@@ -1,5 +1,6 @@
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { Ionicons } from '@expo/vector-icons'
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { Session } from '@supabase/supabase-js'
 import React, { useEffect, useState } from 'react'
 import { Alert, Animated, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
@@ -38,6 +39,7 @@ export default function Account({ session }: Props) {
   const { theme, isDarkMode, toggleDarkMode } = React.useContext(ThemeContext)
   const colorScheme = useColorScheme()
   const switchAnim = React.useRef(new Animated.Value(isDarkMode ? 1 : 0)).current
+  const tabBarHeight = useBottomTabBarHeight()
 
   useEffect(() => {
     if (session) getProfile()
@@ -164,7 +166,10 @@ export default function Account({ session }: Props) {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={{ paddingBottom: tabBarHeight + 20 }}
+    >
       <View style={[styles.header, { backgroundColor: theme.background }]}>
         <View style={styles.themeSwitchContainer}>
           <TouchableOpacity
