@@ -4,7 +4,7 @@ import { useFonts } from 'expo-font';
 import { Redirect, Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 import { ThemeProvider } from '../components/ThemeProvider';
 import { supabase } from '../utils/supabase';
@@ -20,6 +20,7 @@ export default function RootLayout() {
   });
   const router = useRouter();
   const pathname = usePathname();
+  const [isCheckingProfile, setIsCheckingProfile] = useState(true);
 
   useEffect(() => {
     console.log('RootLayout: Checking session');
@@ -35,10 +36,16 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session) {
+      setIsCheckingProfile(false);
+      return;
+    }
     const checkProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setIsCheckingProfile(false);
+        return;
+      }
       const { data: profile } = await supabase
         .from('profiles')
         .select('name')
@@ -47,15 +54,15 @@ export default function RootLayout() {
       if ((!profile || !profile.name) && pathname !== '/onboarding' && pathname !== '/auth') {
         router.replace('/onboarding');
       }
+      setIsCheckingProfile(false);
     };
     checkProfile();
   }, [session, pathname]);
 
-  if (!loaded) {
-    console.log('RootLayout: Fonts not loaded');
+  if (!loaded || isCheckingProfile) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Chargement des polices...</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colorScheme === 'dark' ? '#000' : '#fff' }}>
+        <ActivityIndicator size="large" color={colorScheme === 'dark' ? '#fff' : '#000'} />
       </View>
     );
   }
