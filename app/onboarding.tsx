@@ -19,12 +19,33 @@ const QUESTIONS = [
   { key: 'interests', label: 'Tes passions et centres d\'intérêt 💫', placeholder: 'Passions', multiline: true },
 ];
 
+const ORIENTATIONS = [
+  'Hétérosexuelle',
+  'Homosexuelle',
+  'Bisexuelle',
+  'Pansexuelle',
+  'Asexuelle',
+  'Je préfère ne pas préciser',
+  'Autre',
+];
+
+const RELATIONSHIP_STATUS = [
+  'Célibataire',
+  'En couple',
+  "C'est compliqué",
+  'Mariée',
+  'Fiancée',
+  'Je préfère ne pas préciser',
+];
+
 export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const { theme } = React.useContext(ThemeContext);
   const router = useRouter();
+  const [showOrientationOptions, setShowOrientationOptions] = useState(false);
+  const [showRelationshipOptions, setShowRelationshipOptions] = useState(false);
 
   const current = QUESTIONS[step];
 
@@ -62,20 +83,86 @@ export default function Onboarding() {
     >
       <View style={styles.card}>
         <Text style={[styles.label, { color: theme.primary }]}>{current.label}</Text>
-        <TextInput
-          style={[
-            styles.input,
-            current.multiline && styles.textArea,
-            { backgroundColor: theme.inputBackground, color: theme.text }
-          ]}
-          placeholder={current.placeholder}
-          placeholderTextColor={theme.secondary}
-          value={answers[current.key] || ''}
-          onChangeText={text => setAnswers({ ...answers, [current.key]: text })}
-          keyboardType={current.keyboardType as any || 'default'}
-          multiline={!!current.multiline}
-          numberOfLines={current.multiline ? 3 : 1}
-        />
+        {current.key === 'sexual_orientation' ? (
+          <>
+            <TouchableOpacity
+              style={[styles.input, { justifyContent: 'center' }]}
+              onPress={() => setShowOrientationOptions(!showOrientationOptions)}
+            >
+              <Text style={{ color: answers[current.key] ? theme.text : theme.secondary }}>
+                {answers[current.key] || current.placeholder}
+              </Text>
+            </TouchableOpacity>
+            {showOrientationOptions && (
+              <View style={[styles.optionsContainer, { backgroundColor: theme.inputBackground }]}> 
+                {ORIENTATIONS.map(option => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.optionItem, answers[current.key] === option && { backgroundColor: theme.primary + '20' }]}
+                    onPress={() => {
+                      setAnswers({ ...answers, sexual_orientation: option, custom_orientation: '' });
+                      setShowOrientationOptions(false);
+                    }}
+                  >
+                    <Text style={{ color: theme.text }}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            {answers[current.key] === 'Autre' && (
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+                placeholder="Précise ton orientation"
+                placeholderTextColor={theme.secondary}
+                value={answers.custom_orientation || ''}
+                onChangeText={text => setAnswers({ ...answers, custom_orientation: text })}
+              />
+            )}
+          </>
+        ) : current.key === 'relationship_status' ? (
+          <>
+            <TouchableOpacity
+              style={[styles.input, { justifyContent: 'center' }]}
+              onPress={() => setShowRelationshipOptions(!showRelationshipOptions)}
+            >
+              <Text style={{ color: answers[current.key] ? theme.text : theme.secondary }}>
+                {answers[current.key] || current.placeholder}
+              </Text>
+            </TouchableOpacity>
+            {showRelationshipOptions && (
+              <View style={[styles.optionsContainer, { backgroundColor: theme.inputBackground }]}> 
+                {RELATIONSHIP_STATUS.map(option => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.optionItem, answers[current.key] === option && { backgroundColor: theme.primary + '20' }]}
+                    onPress={() => {
+                      setAnswers({ ...answers, relationship_status: option });
+                      setShowRelationshipOptions(false);
+                    }}
+                  >
+                    <Text style={{ color: theme.text }}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </>
+        ) : (
+          <TextInput
+            key={current.key}
+            style={[
+              styles.input,
+              current.multiline && styles.textArea,
+              { backgroundColor: theme.inputBackground, color: theme.text }
+            ]}
+            placeholder={current.placeholder}
+            placeholderTextColor={theme.secondary}
+            value={answers[current.key] || ''}
+            onChangeText={text => setAnswers({ ...answers, [current.key]: text })}
+            keyboardType={current.keyboardType as any || 'default'}
+            multiline={!!current.multiline}
+            numberOfLines={current.multiline ? 3 : 1}
+          />
+        )}
         <TouchableOpacity
           style={[styles.button, { backgroundColor: theme.primary }]}
           onPress={handleNext}
@@ -136,5 +223,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  optionsContainer: {
+    marginBottom: 15,
+    borderRadius: 15,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  optionItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E8E8',
   },
 }); 
