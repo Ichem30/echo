@@ -38,6 +38,14 @@ const RELATIONSHIP_STATUS = [
   'Je préfère ne pas préciser',
 ];
 
+const MBTI_TYPES = [
+  'INTP', 'INTJ', 'INFP', 'INFJ',
+  'ISTP', 'ISTJ', 'ISFP', 'ISFJ',
+  'ENTP', 'ENTJ', 'ENFP', 'ENFJ',
+  'ESTP', 'ESTJ', 'ESFP', 'ESFJ',
+  'Autre',
+];
+
 export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<any>({});
@@ -46,6 +54,7 @@ export default function Onboarding() {
   const router = useRouter();
   const [showOrientationOptions, setShowOrientationOptions] = useState(false);
   const [showRelationshipOptions, setShowRelationshipOptions] = useState(false);
+  const [showMbtiOptions, setShowMbtiOptions] = useState(false);
 
   const current = QUESTIONS[step];
 
@@ -144,6 +153,42 @@ export default function Onboarding() {
                   </TouchableOpacity>
                 ))}
               </View>
+            )}
+          </>
+        ) : current.key === 'personality_type' ? (
+          <>
+            <TouchableOpacity
+              style={[styles.input, { justifyContent: 'center' }]}
+              onPress={() => setShowMbtiOptions(!showMbtiOptions)}
+            >
+              <Text style={{ color: answers[current.key] ? theme.text : theme.secondary }}>
+                {answers[current.key] || current.placeholder}
+              </Text>
+            </TouchableOpacity>
+            {showMbtiOptions && (
+              <View style={[styles.optionsContainer, { backgroundColor: theme.inputBackground }]}> 
+                {MBTI_TYPES.map(option => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.optionItem, answers[current.key] === option && { backgroundColor: theme.primary + '20' }]}
+                    onPress={() => {
+                      setAnswers({ ...answers, personality_type: option, custom_personality_type: '' });
+                      setShowMbtiOptions(false);
+                    }}
+                  >
+                    <Text style={{ color: theme.text }}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            {answers[current.key] === 'Autre' && (
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+                placeholder="Précise ton type de personnalité"
+                placeholderTextColor={theme.secondary}
+                value={answers.custom_personality_type || ''}
+                onChangeText={text => setAnswers({ ...answers, custom_personality_type: text })}
+              />
             )}
           </>
         ) : (

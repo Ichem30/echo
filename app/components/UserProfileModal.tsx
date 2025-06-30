@@ -28,6 +28,7 @@ type UserProfile = {
   sexual_orientation: string | null;
   custom_orientation?: string | null;
   relationship_status: string | null;
+  custom_personality_type?: string | null;
 };
 
 type Props = {
@@ -55,6 +56,14 @@ const RELATIONSHIP_STATUS = [
   'Je préfère ne pas préciser'
 ];
 
+const MBTI_TYPES = [
+  'INTP', 'INTJ', 'INFP', 'INFJ',
+  'ISTP', 'ISTJ', 'ISFP', 'ISFJ',
+  'ENTP', 'ENTJ', 'ENFP', 'ENFJ',
+  'ESTP', 'ESTJ', 'ESFP', 'ESFJ',
+  'Autre',
+];
+
 export default function UserProfileModal({ visible, onClose, existingProfile }: Props) {
   const [profile, setProfile] = useState<UserProfile>({
     name: '',
@@ -70,9 +79,11 @@ export default function UserProfileModal({ visible, onClose, existingProfile }: 
     sexual_orientation: null,
     custom_orientation: null,
     relationship_status: null,
+    custom_personality_type: null,
   });
   const [showOrientationOptions, setShowOrientationOptions] = useState(false);
   const [showRelationshipOptions, setShowRelationshipOptions] = useState(false);
+  const [showMbtiOptions, setShowMbtiOptions] = useState(false);
   const { theme } = React.useContext(ThemeContext);
 
   useEffect(() => {
@@ -115,6 +126,7 @@ export default function UserProfileModal({ visible, onClose, existingProfile }: 
           sexual_orientation: finalOrientation,
           custom_orientation: profile.sexual_orientation === 'Autre' ? profile.custom_orientation?.trim() || null : null,
           relationship_status: profile.relationship_status,
+          custom_personality_type: profile.custom_personality_type?.trim() || null,
           updated_at: new Date(),
         });
 
@@ -298,13 +310,39 @@ export default function UserProfileModal({ visible, onClose, existingProfile }: 
             onChangeText={(text) => setProfile(prev => ({ ...prev, favorite_quotes: text }))}
           />
 
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
-            placeholder="Ton type de personnalité (ex: MBTI, Ennéagramme...)"
-            placeholderTextColor={theme.secondary}
-            value={profile.personality_type?.toString() || ''}
-            onChangeText={(text) => setProfile(prev => ({ ...prev, personality_type: text }))}
-          />
+          <TouchableOpacity
+            style={[styles.input, { backgroundColor: theme.inputBackground }]}
+            onPress={() => setShowMbtiOptions(!showMbtiOptions)}
+          >
+            <Text style={[styles.selectText, { color: profile.personality_type ? theme.text : theme.secondary }]}> 
+              {profile.personality_type || 'Ton type de personnalité (ex: MBTI, Ennéagramme...)'}
+            </Text>
+          </TouchableOpacity>
+          {showMbtiOptions && (
+            <View style={[styles.optionsContainer, { backgroundColor: theme.inputBackground }]}> 
+              {MBTI_TYPES.map(option => (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.optionItem, profile.personality_type === option && { backgroundColor: theme.primary + '20' }]}
+                  onPress={() => {
+                    setProfile(prev => ({ ...prev, personality_type: option, custom_personality_type: '' }));
+                    setShowMbtiOptions(false);
+                  }}
+                >
+                  <Text style={{ color: theme.text }}>{option}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          {profile.personality_type === 'Autre' && (
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+              placeholder="Précise ton type de personnalité"
+              placeholderTextColor={theme.secondary}
+              value={profile.custom_personality_type || ''}
+              onChangeText={text => setProfile(prev => ({ ...prev, custom_personality_type: text }))}
+            />
+          )}
 
           <TextInput
             style={[styles.input, styles.textArea, { backgroundColor: theme.inputBackground, color: theme.text }]}
