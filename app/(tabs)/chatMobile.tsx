@@ -4,18 +4,18 @@ import * as Haptics from 'expo-haptics';
 import OpenAI from 'openai';
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../utils/supabase';
@@ -240,6 +240,9 @@ export default function ChatMobile() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top']}>
+      <View style={[styles.customHeader, { backgroundColor: theme.background, shadowColor: '#000' }]}> 
+        <Text style={[styles.customHeaderTitle, { color: theme.text }]}>Chat IA</Text>
+      </View>
       <UserProfileModal
         visible={showProfileModal}
         onClose={handleProfileSubmit}
@@ -382,5 +385,20 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
+  },
+  customHeader: {
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1,
+    zIndex: 10,
+  },
+  customHeaderTitle: {
+    fontWeight: '600',
+    fontSize: 18,
+    textAlign: 'center',
   },
 });

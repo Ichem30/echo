@@ -76,6 +76,7 @@ export default function TabLayout() {
         name="chatMobile"
         options={{
           title: 'Chat IA',
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <Ionicons 
               name="chatbubbles" 
