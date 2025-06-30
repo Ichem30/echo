@@ -1,7 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { Session } from '@supabase/supabase-js';
 import { useFonts } from 'expo-font';
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -18,6 +18,8 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     console.log('RootLayout: Checking session');
@@ -31,6 +33,23 @@ export default function RootLayout() {
       setSession(session);
     });
   }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    const checkProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', user.id)
+        .single();
+      if ((!profile || !profile.name) && pathname !== '/onboarding' && pathname !== '/auth') {
+        router.replace('/onboarding');
+      }
+    };
+    checkProfile();
+  }, [session, pathname]);
 
   if (!loaded) {
     console.log('RootLayout: Fonts not loaded');
@@ -48,6 +67,7 @@ export default function RootLayout() {
         <Stack>
           <Stack.Screen name="auth" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />

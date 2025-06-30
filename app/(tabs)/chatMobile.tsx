@@ -74,11 +74,8 @@ export default function ChatMobile() {
         .eq('id', user.id)
         .single();
 
-      if (error || !profile || !profile.name) {
-        setShowProfileModal(true);
-      } else {
+      if (!error && profile && profile.name) {
         setUserProfile(profile);
-        setShowProfileModal(false);
       }
     } catch (error) {
       console.error('Erreur lors de la récupération du profil:', error);
