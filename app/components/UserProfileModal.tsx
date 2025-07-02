@@ -29,6 +29,7 @@ type UserProfile = {
   custom_orientation?: string | null;
   relationship_status: string | null;
   custom_personality_type?: string | null;
+  pronouns?: string | null;
 };
 
 type Props = {
@@ -80,6 +81,7 @@ export default function UserProfileModal({ visible, onClose, existingProfile }: 
     custom_orientation: null,
     relationship_status: null,
     custom_personality_type: null,
+    pronouns: null,
   });
   const [showOrientationOptions, setShowOrientationOptions] = useState(false);
   const [showRelationshipOptions, setShowRelationshipOptions] = useState(false);
@@ -127,6 +129,7 @@ export default function UserProfileModal({ visible, onClose, existingProfile }: 
           custom_orientation: profile.sexual_orientation === 'Autre' ? profile.custom_orientation?.trim() || null : null,
           relationship_status: profile.relationship_status,
           custom_personality_type: profile.custom_personality_type?.trim() || null,
+          pronouns: profile.pronouns?.trim() || null,
           updated_at: new Date(),
         });
 
@@ -199,6 +202,14 @@ export default function UserProfileModal({ visible, onClose, existingProfile }: 
             placeholderTextColor={theme.secondary}
             value={profile.name}
             onChangeText={(text) => setProfile(prev => ({ ...prev, name: text }))}
+          />
+
+          <TextInput
+            style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+            placeholder="Tes pronoms (ex : elle, il, iel, elle/iel...)"
+            placeholderTextColor={theme.secondary}
+            value={profile.pronouns || ''}
+            onChangeText={text => setProfile(prev => ({ ...prev, pronouns: text }))}
           />
 
           <TextInput

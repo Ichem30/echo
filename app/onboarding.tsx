@@ -4,9 +4,18 @@ import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, Tou
 import { supabase } from '../utils/supabase';
 import { ThemeContext } from '../utils/theme';
 
+const PRONOUNS = [
+  'elle',
+  'il',
+  'iel',
+  'autre',
+  'je préfère ne pas préciser',
+];
+
 const QUESTIONS = [
   { key: 'name', label: 'Ton prénom', placeholder: 'Ton prénom', required: true },
   { key: 'age', label: 'Ton âge', placeholder: 'Ton âge', keyboardType: 'numeric' },
+  { key: 'pronouns', label: 'Tes pronoms', placeholder: 'Ex : elle, il, iel, elle/iel...', required: true },
   { key: 'sexual_orientation', label: 'Ton orientation sexuelle', placeholder: "Orientation (ex: Hétérosexuelle)" },
   { key: 'relationship_status', label: 'Ta situation amoureuse', placeholder: "Situation (ex: Célibataire)" },
   { key: 'profession', label: 'Ta profession ou tes études', placeholder: 'Profession ou études' },
@@ -55,6 +64,7 @@ export default function Onboarding() {
   const [showOrientationOptions, setShowOrientationOptions] = useState(false);
   const [showRelationshipOptions, setShowRelationshipOptions] = useState(false);
   const [showMbtiOptions, setShowMbtiOptions] = useState(false);
+  const [showPronounsOptions, setShowPronounsOptions] = useState(false);
 
   const current = QUESTIONS[step];
 
@@ -92,7 +102,23 @@ export default function Onboarding() {
     >
       <View style={styles.card}>
         <Text style={[styles.label, { color: theme.primary }]}>{current.label}</Text>
-        {current.key === 'sexual_orientation' ? (
+        {current.key === 'pronouns' ? (
+          <TextInput
+            key={current.key}
+            style={[
+              styles.input,
+              current.multiline && styles.textArea,
+              { backgroundColor: theme.inputBackground, color: theme.text }
+            ]}
+            placeholder={current.placeholder}
+            placeholderTextColor={theme.secondary}
+            value={answers[current.key] || ''}
+            onChangeText={text => setAnswers({ ...answers, [current.key]: text })}
+            keyboardType={current.keyboardType as any || 'default'}
+            multiline={!!current.multiline}
+            numberOfLines={current.multiline ? 3 : 1}
+          />
+        ) : current.key === 'sexual_orientation' ? (
           <>
             <TouchableOpacity
               style={[styles.input, { justifyContent: 'center' }]}

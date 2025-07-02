@@ -29,6 +29,7 @@ type UserProfile = {
   sexual_orientation: string | null;
   custom_orientation: string | null;
   relationship_status: string | null;
+  pronouns: string | null;
 }
 
 export default function Account({ session }: Props) {
@@ -69,7 +70,8 @@ export default function Account({ session }: Props) {
           personality_type,
           sexual_orientation,
           custom_orientation,
-          relationship_status
+          relationship_status,
+          pronouns
         `)
         .eq('id', session?.user.id)
         .single()
@@ -94,7 +96,8 @@ export default function Account({ session }: Props) {
           personality_type: data.personality_type,
           sexual_orientation: data.sexual_orientation,
           custom_orientation: data.custom_orientation,
-          relationship_status: data.relationship_status
+          relationship_status: data.relationship_status,
+          pronouns: data.pronouns || ''
         })
       }
     } catch (error) {
@@ -176,7 +179,7 @@ export default function Account({ session }: Props) {
         style={{ margin: 20, alignSelf: 'center', backgroundColor: theme.primary, padding: 10, borderRadius: 10 }}
         onPress={() => router.push('/onboarding')}
       >
-        <Text style={{ color: 'white', fontWeight: 'bold' }}>Tester l'onboarding</Text>
+        <Text style={{ color: 'white', fontWeight: 'bold' }}>Tester l&apos;onboarding</Text>
       </TouchableOpacity>
       <View style={[styles.header, { backgroundColor: theme.background }]}>
         <View style={styles.themeSwitchContainer}>
