@@ -5,18 +5,18 @@ import * as Haptics from 'expo-haptics';
 import OpenAI from 'openai';
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../utils/supabase';
@@ -59,12 +59,14 @@ export default function ChatMobile() {
   const [firstPromptSent, setFirstPromptSent] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [lastSavedMessageCount, setLastSavedMessageCount] = useState(0);
+  const [checkins, setCheckins] = useState<any[]>([]);
 
   const { theme } = React.useContext(ThemeContext);
 
   useEffect(() => {
     fetchUserProfile();
     fetchUserDoc();
+    fetchCheckins();
   }, []);
 
   useEffect(() => {
@@ -119,6 +121,25 @@ export default function ChatMobile() {
       }
     } catch (error) {
       setUserDoc({ messages: [] });
+    }
+  };
+
+  const fetchCheckins = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('checkins')
+        .eq('id', user.id)
+        .single();
+      if (!error && profile && Array.isArray(profile.checkins)) {
+        setCheckins(profile.checkins);
+      } else {
+        setCheckins([]);
+      }
+    } catch (error) {
+      setCheckins([]);
     }
   };
 
@@ -238,6 +259,15 @@ export default function ChatMobile() {
     if (userDoc && userDoc.resumes && userDoc.resumes.length > 0) {
       resumesBloc = userDoc.resumes.slice(0, 10);
     }
+    // Bloc check-in mental (3 derniers)
+    let checkinBloc = '';
+    if (checkins && checkins.length > 0) {
+      const lastCheckins = checkins.slice(0, 3);
+      checkinBloc = '\nCheck-in mental des 3 derniers jours :\n' +
+        lastCheckins.map((c: any) => `- [${c.date}] Couleur : ${c.mot_cle}`).join('\n');
+    } else {
+      checkinBloc = '\nAucun check-in mental récent.';
+    }
     return {
       role: "system" as const,
       content: `Tu es une confidente attentionnée et bienveillante. Voici le contexte sur la personne avec qui tu parles :
@@ -251,6 +281,8 @@ export default function ChatMobile() {
       - Citations inspirantes: ${userProfile.favorite_quotes}
       - Type de personnalité: ${userProfile.personality_type}
       - Passions: ${userProfile.interests}
+
+      ${checkinBloc}
 
       Historique des discussions récentes :
       ${resumesBloc.length > 0 ? resumesBloc.map((r: any) => `- [${r.date} ${r.heure}] Humeur : ${r.humeur} | Sujets : ${(r.sujets || []).join(', ')} | Infos clés : ${(r.infos_cles || []).join(', ')} | Résumé : ${r.resume}`).join('\n') : 'Aucun historique.'}

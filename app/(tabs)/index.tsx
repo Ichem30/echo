@@ -1,17 +1,22 @@
 import { Session } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from '../../utils/supabase';
+import CheckInModal from '../components/CheckInModal';
 
 export default function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
   const [userName, setUserName] = useState<string>('');
+  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [userDoc, setUserDoc] = useState<any>(null);
+  const [checkins, setCheckins] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
         fetchUserProfile(session.user.id);
+        fetchCheckins(session.user.id);
       }
     });
   }, []);
@@ -33,8 +38,48 @@ export default function HomePage() {
     }
   };
 
+  const fetchCheckins = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('checkins')
+        .eq('id', userId)
+        .single();
+      if (!error && profile && Array.isArray(profile.checkins)) {
+        setCheckins(profile.checkins);
+        // Vérifie s'il y a un check-in aujourd'hui
+        const today = new Date().toISOString().slice(0, 10);
+        if (!profile.checkins.find((c: any) => c.date === today)) {
+          setShowCheckIn(true);
+        }
+      } else {
+        setCheckins([]);
+        setShowCheckIn(true);
+      }
+    } catch (error) {
+      setCheckins([]);
+      setShowCheckIn(true);
+    }
+  };
+
+  const handleCheckIn = useCallback(async (colorObj: any) => {
+    if (!session?.user) return;
+    const today = new Date().toISOString().slice(0, 10);
+    let newCheckins = Array.isArray(checkins) ? [...checkins] : [];
+    // Supprime le check-in du jour s'il existe déjà
+    newCheckins = newCheckins.filter((c: any) => c.date !== today);
+    newCheckins.unshift({ date: today, couleur: colorObj.color, mot_cle: colorObj.label });
+    setCheckins(newCheckins);
+    setShowCheckIn(false);
+    await supabase
+      .from('profiles')
+      .update({ checkins: newCheckins })
+      .eq('id', session.user.id);
+  }, [session, checkins]);
+
   return (
     <SafeAreaView style={styles.container}>
+      <CheckInModal visible={showCheckIn} onClose={() => setShowCheckIn(false)} onSelect={handleCheckIn} />
       <View style={styles.content}>
         <Text style={styles.title}>
           Bienvenue {userName || 'utilisateur'}
