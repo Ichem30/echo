@@ -58,6 +58,7 @@ export default function ChatMobile() {
   const tabBarHeight = useBottomTabBarHeight();
   const [firstPromptSent, setFirstPromptSent] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [lastSavedMessageCount, setLastSavedMessageCount] = useState(0);
 
   const { theme } = React.useContext(ThemeContext);
 
@@ -114,10 +115,10 @@ export default function ChatMobile() {
       if (!error && profile && profile.user_doc) {
         setUserDoc(profile.user_doc);
       } else {
-        setUserDoc({ resumes: [] });
+        setUserDoc({ messages: [] });
       }
     } catch (error) {
-      setUserDoc({ resumes: [] });
+      setUserDoc({ messages: [] });
     }
   };
 
@@ -126,66 +127,142 @@ export default function ChatMobile() {
     fetchUserProfile();
   };
 
-  // Modifier le SYSTEM_MESSAGE pour inclure les informations du profil
-  const getSystemMessage = () => {
-    if (!userProfile) return SYSTEM_MESSAGE;
-
-    if (!firstPromptSent) {
-      let resumesBloc = [];
-      if (userDoc && userDoc.resumes && userDoc.resumes.length > 0) {
-        resumesBloc = userDoc.resumes.slice(0, 10);
+  // Fonction pour générer un résumé structuré de la session (enrichi)
+  const generateConversationSummary = async (messages: Message[]): Promise<any> => {
+    try {
+      const historique = messages.map((m: any) => {
+        const auteur = m.role === 'user' ? 'Utilisatrice' : m.role === 'assistant' ? 'Assistante' : 'Système';
+        return `${auteur} : ${m.content}`;
+      }).join('\n');
+      const prompt = `Voici l'historique d'une conversation entre une utilisatrice et son assistante IA. Résume la session en 4 points :\n1. Humeur générale de l'utilisatrice\n2. Sujets principaux abordés\n3. Informations clés à retenir sur l'utilisatrice (objectifs, préoccupations, événements importants, changements, etc.)\n4. Résumé synthétique de la discussion (2-3 phrases max)\nRéponds uniquement au format JSON : { "humeur": "...", "sujets": ["..."], "infos_cles": ["..."], "resume": "..." }\nHistorique :\n${historique}`;
+      console.log('[OpenAI][Résumé][Prompt]', prompt);
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: 'system', content: "Tu es une IA qui résume des conversations pour un journal utilisateur. Réponds toujours en JSON strict." },
+          { role: 'user', content: prompt }
+        ],
+        stream: false,
+        temperature: 0.3
+      });
+      console.log('[OpenAI][Résumé][Réponse]', response);
+      const content = response.choices[0]?.message?.content || '';
+      let aiSummary;
+      try {
+        aiSummary = JSON.parse(content);
+      } catch (e) {
+        const match = content.match(/\{[\s\S]*\}/);
+        if (match) {
+          aiSummary = JSON.parse(match[0]);
+        } else {
+          aiSummary = {
+            humeur: '',
+            sujets: [],
+            infos_cles: [],
+            resume: content.slice(0, 300)
+          };
+        }
       }
+      const now = new Date();
+      const date = now.toISOString().slice(0, 10);
+      const heure = now.toTimeString().slice(0, 5);
       return {
-        role: "system" as const,
-        content: `Tu es une confidente attentionnée et bienveillante. Voici le contexte sur la personne avec qui tu parles :
-        - Prénom: ${userProfile.name}
-        - Âge: ${userProfile.age}
-        - Profession/Études: ${userProfile.profession}
-        - Routine quotidienne: ${userProfile.daily_routine}
-        - Rituels bien-être: ${userProfile.self_care_habits}
-        - Influences sur l'humeur: ${userProfile.mood_triggers}
-        - Objectifs personnels: ${userProfile.goals}
-        - Citations inspirantes: ${userProfile.favorite_quotes}
-        - Type de personnalité: ${userProfile.personality_type}
-        - Passions: ${userProfile.interests}
-
-        Historique des discussions récentes :
-        ${resumesBloc.length > 0 ? resumesBloc.map((r: any) => `- [${r.date} ${r.heure}] Humeur : ${r.humeur} | Sujets : ${(r.sujets || []).join(', ')} | Résumé : ${r.resume}`).join('\n') : 'Aucun historique.'}
-
-        Adapte ton style de communication pour être :
-        1. Personnelle et empathique, en utilisant les informations de son profil
-        2. Encourageante et positive, en ligne avec ses objectifs
-        3. Respectueuse de ses rituels et habitudes
-        4. Attentive à ses déclencheurs d'humeur
-        5. Inspirante, en faisant écho à ses citations préférées
-        
-        Utilise un ton amical et intime, comme une amie proche qui la connaît bien. Tutoie-la et utilise des emojis de façon modérée pour garder un style élégant et "clean girl".`
+        date,
+        heure,
+        humeur: aiSummary.humeur,
+        sujets: aiSummary.sujets,
+        infos_cles: aiSummary.infos_cles,
+        resume: aiSummary.resume
       };
-    } else {
+    } catch (error) {
       return {
-        role: "system" as const,
-        content: `Tu es une confidente attentionnée et bienveillante. Voici le contexte sur la personne avec qui tu parles :
-        - Prénom: ${userProfile.name}
-        - Âge: ${userProfile.age}
-        - Profession/Études: ${userProfile.profession}
-        - Routine quotidienne: ${userProfile.daily_routine}
-        - Rituels bien-être: ${userProfile.self_care_habits}
-        - Influences sur l'humeur: ${userProfile.mood_triggers}
-        - Objectifs personnels: ${userProfile.goals}
-        - Citations inspirantes: ${userProfile.favorite_quotes}
-        - Type de personnalité: ${userProfile.personality_type}
-        - Passions: ${userProfile.interests}
-
-        Adapte ton style de communication pour être :
-        1. Personnelle et empathique, en utilisant les informations de son profil
-        2. Encourageante et positive, en ligne avec ses objectifs
-        3. Respectueuse de ses rituels et habitudes
-        4. Attentive à ses déclencheurs d'humeur
-        5. Inspirante, en faisant écho à ses citations préférées
-        
-        Utilise un ton amical et intime, comme une amie proche qui la connaît bien. Tutoie-la et utilise des emojis de façon modérée pour garder un style élégant et "clean girl".`
+        date: new Date().toISOString().slice(0, 10),
+        heure: new Date().toISOString().slice(11, 19),
+        humeur: '',
+        sujets: [],
+        infos_cles: [],
+        resume: 'Résumé non disponible (erreur OpenAI)'
       };
     }
+  };
+
+  // Ajoute ou met à jour le résumé dans user_doc.resumes
+  const updateUserDocWithSummary = async (summary: any) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      let newUserDoc = userDoc && userDoc.resumes ? { ...userDoc } : { resumes: [] };
+      // Supprime tous les résumés du jour (date ISO)
+      newUserDoc.resumes = newUserDoc.resumes.filter((r: any) => r.date !== summary.date);
+      newUserDoc.resumes.unshift(summary);
+      // Nettoyage du champ messages hérité de l'ancienne logique
+      if ('messages' in newUserDoc) {
+        delete newUserDoc.messages;
+      }
+      setUserDoc(newUserDoc);
+      await supabase
+        .from('profiles')
+        .update({ user_doc: newUserDoc })
+        .eq('id', user.id);
+    } catch (error) {
+      // gestion d'erreur
+    }
+  };
+
+  // Sauvegarde à la sortie du chat et périodiquement
+  const saveSessionSummary = async () => {
+    if (messages.length < 2) return;
+    const summary = await generateConversationSummary(messages);
+    await updateUserDocWithSummary(summary);
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      return () => {
+        saveSessionSummary();
+      };
+    }, [messages, userDoc])
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      saveSessionSummary();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [messages, userDoc]);
+
+  // Le prompt système lit les résumés
+  const getSystemMessage = () => {
+    if (!userProfile) return SYSTEM_MESSAGE;
+    let resumesBloc = [];
+    if (userDoc && userDoc.resumes && userDoc.resumes.length > 0) {
+      resumesBloc = userDoc.resumes.slice(0, 10);
+    }
+    return {
+      role: "system" as const,
+      content: `Tu es une confidente attentionnée et bienveillante. Voici le contexte sur la personne avec qui tu parles :
+      - Prénom: ${userProfile.name}
+      - Âge: ${userProfile.age}
+      - Profession/Études: ${userProfile.profession}
+      - Routine quotidienne: ${userProfile.daily_routine}
+      - Rituels bien-être: ${userProfile.self_care_habits}
+      - Influences sur l'humeur: ${userProfile.mood_triggers}
+      - Objectifs personnels: ${userProfile.goals}
+      - Citations inspirantes: ${userProfile.favorite_quotes}
+      - Type de personnalité: ${userProfile.personality_type}
+      - Passions: ${userProfile.interests}
+
+      Historique des discussions récentes :
+      ${resumesBloc.length > 0 ? resumesBloc.map((r: any) => `- [${r.date} ${r.heure}] Humeur : ${r.humeur} | Sujets : ${(r.sujets || []).join(', ')} | Infos clés : ${(r.infos_cles || []).join(', ')} | Résumé : ${r.resume}`).join('\n') : 'Aucun historique.'}
+
+      Adapte ton style de communication pour être :
+      1. Personnelle et empathique, en utilisant les informations de son profil
+      2. Encourageante et positive, en ligne avec ses objectifs
+      3. Respectueuse de ses rituels et habitudes
+      4. Attentive à ses déclencheurs d'humeur
+      5. Inspirante, en faisant écho à ses citations préférées
+      Utilise un ton amical et intime, comme une amie proche qui la connaît bien. Tutoie-la et utilise des emojis de façon modérée pour garder un style élégant et "clean girl".`
+    };
   };
 
   const handleError = async (error: any) => {
@@ -217,12 +294,13 @@ export default function ChatMobile() {
 
   const handleMobileResponse = async (messages: any[]) => {
     try {
+      console.log('[OpenAI][Prompt complet]', messages);
       const response = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: messages,
         stream: false,
       });
-
+      console.log('[OpenAI][Réponse]', response);
       const content = response.choices[0]?.message?.content || "";
       return {
         role: "assistant" as const,
@@ -255,7 +333,7 @@ export default function ChatMobile() {
     Keyboard.dismiss();
 
     const apiMessages = [
-      getSystemMessage(),
+      await getSystemMessage(),
       ...messages.map(msg => ({
         role: msg.role,
         content: msg.content
@@ -307,101 +385,6 @@ export default function ChatMobile() {
       minute: '2-digit' 
     });
   };
-
-  // Fonction pour générer un résumé de la session (améliorée avec OpenAI)
-  const generateConversationSummary = async (messages: Message[]): Promise<any> => {
-    try {
-      // Formatage de l'historique pour le prompt
-      const historique = messages.map(m => {
-        const auteur = m.role === 'user' ? 'Utilisatrice' : m.role === 'assistant' ? 'Assistante' : 'Système';
-        return `${auteur} : ${m.content}`;
-      }).join('\n');
-      
-      const prompt = `Voici l'historique d'une conversation entre une utilisatrice et son assistante IA. Résume la session en 3 points :\n1. Humeur générale de l'utilisatrice\n2. Sujets principaux abordés\n3. Résumé synthétique de la discussion (2-3 phrases max)\nRéponds uniquement au format JSON : { "date": "...", "heure": "...", "humeur": "...", "sujets": ["..."], "resume": "..." }\nHistorique :\n${historique}`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: 'system', content: "Tu es une IA qui résume des conversations pour un journal utilisateur. Réponds toujours en JSON strict." },
-          { role: 'user', content: prompt }
-        ],
-        stream: false,
-        temperature: 0.3
-      });
-      const content = response.choices[0]?.message?.content || '';
-      // Tentative de parsing JSON
-      let summary;
-      try {
-        summary = JSON.parse(content);
-      } catch (e) {
-        // Si la réponse n'est pas un JSON strict, on tente d'extraire le JSON
-        const match = content.match(/\{[\s\S]*\}/);
-        if (match) {
-          summary = JSON.parse(match[0]);
-        } else {
-          // Fallback minimal
-          summary = {
-            date: new Date().toISOString().slice(0, 10),
-            heure: new Date().toISOString().slice(11, 19),
-            humeur: '',
-            sujets: [],
-            resume: content.slice(0, 300)
-          };
-        }
-      }
-      // Ajout date/heure si manquant
-      if (!summary.date) summary.date = new Date().toISOString().slice(0, 10);
-      if (!summary.heure) summary.heure = new Date().toISOString().slice(11, 19);
-      return summary;
-    } catch (error) {
-      // Fallback en cas d'erreur
-      return {
-        date: new Date().toISOString().slice(0, 10),
-        heure: new Date().toISOString().slice(11, 19),
-        humeur: '',
-        sujets: [],
-        resume: 'Résumé non disponible (erreur OpenAI)'
-      };
-    }
-  };
-
-  const updateUserDocWithSummary = async (summary: any) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      let newUserDoc = userDoc && userDoc.resumes ? { ...userDoc } : { resumes: [] };
-      newUserDoc.resumes = newUserDoc.resumes.filter((r: any) => r.date !== summary.date);
-      newUserDoc.resumes.unshift(summary);
-      setUserDoc(newUserDoc);
-      await supabase
-        .from('profiles')
-        .update({ user_doc: newUserDoc })
-        .eq('id', user.id);
-    } catch (error) {
-      // gestion d'erreur
-    }
-  };
-
-  const saveSessionSummary = async () => {
-    if (messages.length < 2) return;
-    const summary = await generateConversationSummary(messages);
-    await updateUserDocWithSummary(summary);
-  };
-
-  useFocusEffect(
-    React.useCallback(() => {
-      return () => {
-        saveSessionSummary();
-      };
-    }, [messages, userDoc])
-  );
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      saveSessionSummary();
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [messages, userDoc]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top']}>
