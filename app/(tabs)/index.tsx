@@ -2,10 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import OpenAI from 'openai';
 import { useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../../utils/supabase';
 import { ThemeContext } from '../../utils/theme';
 import Avatar from '../components/Avatar';
+import MoodTimeline from '../components/MoodTimeline';
 
 const openai = new OpenAI({
   apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || '',
@@ -22,6 +23,7 @@ export default function HomePage() {
   const [quote, setQuote] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [loadingQuote, setLoadingQuote] = useState(false);
+  const [checkins, setCheckins] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -35,6 +37,7 @@ export default function HomePage() {
         setLoading(false);
         if (profile) {
           loadOrGenerateQuote(profile);
+          if (Array.isArray(profile.checkins)) setCheckins(profile.checkins);
         }
       } else {
         setLoading(false);
@@ -76,6 +79,31 @@ export default function HomePage() {
     }
   };
 
+  // Construction du tableau des 7 derniers jours (du plus ancien au plus récent)
+  const today = new Date();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  const checkins7days = days.map(date => {
+    const found = checkins.find(c => c.date === date);
+    if (found) {
+      return {
+        date: found.date,
+        color: found.color || found.couleur || '#eee',
+        label: found.label || found.mot_cle || ''
+      };
+    } else {
+      return {
+        date,
+        color: '#E0E0E0', // gris clair pour absence de check-in
+        label: ''
+      };
+    }
+  });
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 60 }} /></SafeAreaView>
@@ -84,21 +112,24 @@ export default function HomePage() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}> 
-      <View style={styles.centered}>
-        <View style={styles.avatarContainer}>
-          <Avatar size={160} url={profile?.avatar_url || null} onUpload={() => {}} editable={false} />
+      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+        <View style={styles.centered}>
+          <MoodTimeline checkins={checkins7days} />
+          <View style={styles.avatarContainer}>
+            <Avatar size={160} url={profile?.avatar_url || null} onUpload={() => {}} editable={false} />
+          </View>
+          <Text style={[styles.hello, { color: theme.text }]}>Bonjour {profile?.name || 'utilisateur'} 👋</Text>
+          <Text style={[styles.citationTitle, { color: theme.primary }]}>Ta citation du jour</Text>
+          {loadingQuote ? (
+            <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 30 }} />
+          ) : (
+            <Text style={[styles.citation, { color: theme.secondary }]}>{quote}</Text>
+          )}
+          <TouchableOpacity style={[styles.ctaBtn, { backgroundColor: theme.primary }]} onPress={() => router.push('/(tabs)/chatMobile')}>
+            <Text style={styles.ctaText}>Démarrer la journée</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={[styles.hello, { color: theme.text }]}>Bonjour {profile?.name || 'utilisateur'} 👋</Text>
-        <Text style={[styles.citationTitle, { color: theme.primary }]}>Ta citation du jour</Text>
-        {loadingQuote ? (
-          <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 30 }} />
-        ) : (
-          <Text style={[styles.citation, { color: theme.secondary }]}>{quote}</Text>
-        )}
-        <TouchableOpacity style={[styles.ctaBtn, { backgroundColor: theme.primary }]} onPress={() => router.push('/(tabs)/chatMobile')}>
-          <Text style={styles.ctaText}>Démarrer la journée</Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -107,6 +138,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  flexContainer: { flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24 },
+  topContent: { alignItems: 'center', width: '100%', marginTop: 10 },
+  bottomContent: { width: '100%', alignItems: 'center', marginBottom: 16 },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -114,7 +148,7 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   avatarContainer: {
-    marginBottom: 28,
+    marginBottom: 18,
     alignItems: 'center',
   },
   hello: {
@@ -133,7 +167,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontStyle: 'italic',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 18,
     lineHeight: 32,
     minHeight: 64,
   },
