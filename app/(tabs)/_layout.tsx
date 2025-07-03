@@ -62,6 +62,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Accueil',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons 
               name="home" 
@@ -91,6 +92,7 @@ export default function TabLayout() {
         name="account"
         options={{
           title: 'Compte',
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <Ionicons 
               name="person" 
