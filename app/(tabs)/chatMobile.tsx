@@ -355,10 +355,15 @@ export default function ChatMobile() {
       checkinBloc += '\nCheck-ins précédents :\n' +
         lastCheckins.map((c: any) => `- [${c.date}] Couleur : ${c.mot_cle}`).join('\n');
     }
-    // Ajout d'une consigne explicite pour l'IA
+    // Consigne humeur subtile
     let humeurInstruction = '';
     if (checkinToday) {
       humeurInstruction = `\n\nPrends en compte l'humeur du jour (${checkinToday.mot_cle}) pour adapter subtilement le ton de tes réponses, sans le mentionner explicitement à chaque message.`;
+    }
+    // Consigne genre/pronoms
+    let genreInstruction = '';
+    if (userProfile.pronouns) {
+      genreInstruction = `\n\nDéduis le genre de l'utilisateur à partir de ses pronoms (« ${userProfile.pronouns} ») et utilise le bon genre et les bons accords dans tes réponses, sans le mentionner explicitement.`;
     }
     return {
       role: "system" as const,
@@ -386,7 +391,7 @@ export default function ChatMobile() {
       3. Respectueuse de ses rituels et habitudes
       4. Attentive à ses déclencheurs d'humeur
       5. Inspirante, en faisant écho à ses citations préférées
-      Utilise un ton amical et intime, comme une amie proche qui la connaît bien. Tutoie-la et utilise des emojis de façon modérée pour garder un style élégant et "clean girl".${humeurInstruction}`
+      Utilise un ton amical et intime, comme une amie proche qui la connaît bien. Tutoie-la et utilise des emojis de façon modérée pour garder un style élégant et "clean girl".${humeurInstruction}${genreInstruction}`
     };
   };
 
