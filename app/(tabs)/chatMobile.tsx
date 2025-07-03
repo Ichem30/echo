@@ -524,9 +524,7 @@ export default function ChatMobile() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top']}>
-      <View style={[styles.customHeader, { backgroundColor: theme.background, shadowColor: '#000' }]}> 
-        <Text style={[styles.customHeaderTitle, { color: theme.text }]}>Chat IA</Text>
-      </View>
+      {/* SUPPRESSION DU HEADER */}
       <UserProfileModal
         visible={showProfileModal}
         onClose={handleProfileSubmit}
