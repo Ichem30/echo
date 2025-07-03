@@ -1,96 +1,103 @@
-import { Session } from '@supabase/supabase-js';
-import { useCallback, useEffect, useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import OpenAI from 'openai';
+import { useContext, useEffect, useState } from 'react';
+import { ActivityIndicator, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../../utils/supabase';
-import CheckInModal from '../components/CheckInModal';
+import { ThemeContext } from '../../utils/theme';
+import Avatar from '../components/Avatar';
+
+const openai = new OpenAI({
+  apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || '',
+  dangerouslyAllowBrowser: true
+});
+
+const QUOTE_KEY = 'daily_quote';
+const QUOTE_DATE_KEY = 'daily_quote_date';
 
 export default function HomePage() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [userName, setUserName] = useState<string>('');
-  const [showCheckIn, setShowCheckIn] = useState(false);
-  const [userDoc, setUserDoc] = useState<any>(null);
-  const [checkins, setCheckins] = useState<any[]>([]);
+  const { theme } = useContext(ThemeContext);
+  const router = useRouter();
+  const [profile, setProfile] = useState<any>(null);
+  const [quote, setQuote] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [loadingQuote, setLoadingQuote] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        fetchUserProfile(session.user.id);
-        fetchCheckins(session.user.id);
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setProfile(profile);
+        setLoading(false);
+        if (profile) {
+          loadOrGenerateQuote(profile);
+        }
+      } else {
+        setLoading(false);
       }
     });
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
+  const loadOrGenerateQuote = async (profile: any) => {
+    setLoadingQuote(true);
     try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('name')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-      if (profile?.name) {
-        setUserName(profile.name);
+      const today = new Date().toISOString().slice(0, 10);
+      const storedDate = await AsyncStorage.getItem(QUOTE_DATE_KEY);
+      const storedQuote = await AsyncStorage.getItem(QUOTE_KEY);
+      if (storedDate === today && storedQuote) {
+        setQuote(storedQuote);
+        setLoadingQuote(false);
+        return;
       }
-    } catch (error) {
-      console.error('Erreur lors de la récupération du profil:', error);
+      // Sinon, on génère une nouvelle citation
+      const prompt = `Tu es une IA qui écrit des citations inspirantes et émotionnelles. Génère une citation du jour pour motiver et toucher émotionnellement l'utilisateur, en t'appuyant sur ces informations :\nPrénom : ${profile.name}\nObjectifs : ${profile.goals || 'non précisé'}\nPassions : ${profile.interests || 'non précisées'}\nDéclencheurs d'humeur : ${profile.mood_triggers || 'non précisés'}\nRituels bien-être : ${profile.self_care_habits || 'non précisés'}\nType de personnalité : ${profile.personality_type || 'non précisé'}\n\nLa citation doit être courte (1 à 2 phrases), poétique, et donner de la force pour la journée. Ne commence jamais par "Tu" ou "Vous". Utilise le prénom si possible.`;
+      const response = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'Tu es une IA qui écrit des citations inspirantes et émotionnelles.' },
+          { role: 'user', content: prompt }
+        ],
+        stream: false,
+        temperature: 0.8
+      });
+      const content = response.choices[0]?.message?.content || '';
+      const finalQuote = content.replace(/^"|"$/g, '');
+      setQuote(finalQuote);
+      await AsyncStorage.setItem(QUOTE_KEY, finalQuote);
+      await AsyncStorage.setItem(QUOTE_DATE_KEY, today);
+    } catch (e) {
+      setQuote('Crois en toi, chaque jour est une nouvelle chance.');
+    } finally {
+      setLoadingQuote(false);
     }
   };
 
-  const fetchCheckins = async (userId: string) => {
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('checkins')
-        .eq('id', userId)
-        .single();
-      if (!error && profile && Array.isArray(profile.checkins)) {
-        setCheckins(profile.checkins);
-        // Vérifie s'il y a un check-in aujourd'hui
-        const today = new Date().toISOString().slice(0, 10);
-        if (!profile.checkins.find((c: any) => c.date === today)) {
-          setShowCheckIn(true);
-        }
-      } else {
-        setCheckins([]);
-        setShowCheckIn(true);
-      }
-    } catch (error) {
-      setCheckins([]);
-      setShowCheckIn(true);
-    }
-  };
-
-  const handleCheckIn = useCallback(async (colorObj: any) => {
-    if (!session?.user) return;
-    const today = new Date().toISOString().slice(0, 10);
-    let newCheckins = Array.isArray(checkins) ? [...checkins] : [];
-    // Supprime le check-in du jour s'il existe déjà
-    newCheckins = newCheckins.filter((c: any) => c.date !== today);
-    newCheckins.unshift({ date: today, couleur: colorObj.color, mot_cle: colorObj.label });
-    setCheckins(newCheckins);
-    setShowCheckIn(false);
-    await supabase
-      .from('profiles')
-      .update({ checkins: newCheckins })
-      .eq('id', session.user.id);
-  }, [session, checkins]);
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 60 }} /></SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <CheckInModal visible={showCheckIn} onClose={() => setShowCheckIn(false)} onSelect={handleCheckIn} />
-      <View style={styles.content}>
-        <Text style={styles.title}>
-          Bienvenue {userName || 'utilisateur'}
-        </Text>
-        <Text style={styles.subtitle}>
-          Explorez notre application avec :
-        </Text>
-        <View style={styles.features}>
-          <Text style={styles.feature}>• Chat IA pour discuter avec notre assistant</Text>
-          <Text style={styles.feature}>• Gestion de votre profil dans la section Compte</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}> 
+      <View style={styles.centered}>
+        <View style={styles.avatarContainer}>
+          <Avatar size={160} url={profile?.avatar_url || null} onUpload={() => {}} editable={false} />
         </View>
+        <Text style={[styles.hello, { color: theme.text }]}>Bonjour {profile?.name || 'utilisateur'} 👋</Text>
+        <Text style={[styles.citationTitle, { color: theme.primary }]}>Ta citation du jour</Text>
+        {loadingQuote ? (
+          <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 30 }} />
+        ) : (
+          <Text style={[styles.citation, { color: theme.secondary }]}>{quote}</Text>
+        )}
+        <TouchableOpacity style={[styles.ctaBtn, { backgroundColor: theme.primary }]} onPress={() => router.push('/(tabs)/chatMobile')}>
+          <Text style={styles.ctaText}>Démarrer la journée</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -99,32 +106,52 @@ export default function HomePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
-  content: {
+  centered: {
     flex: 1,
-    padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 32,
   },
-  title: {
-    fontSize: 24,
+  avatarContainer: {
+    marginBottom: 28,
+    alignItems: 'center',
+  },
+  hello: {
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 18,
     textAlign: 'center',
   },
-  subtitle: {
+  citationTitle: {
     fontSize: 18,
-    marginBottom: 20,
+    fontWeight: '600',
+    marginBottom: 18,
     textAlign: 'center',
   },
-  features: {
-    width: '100%',
-    maxWidth: 400,
+  citation: {
+    fontSize: 22,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: 40,
+    lineHeight: 32,
+    minHeight: 64,
   },
-  feature: {
-    fontSize: 16,
-    marginBottom: 10,
-    paddingLeft: 10,
+  ctaBtn: {
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 36,
+    alignItems: 'center',
+    marginTop: 10,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  ctaText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 17,
+    letterSpacing: 0.5,
   },
 });
