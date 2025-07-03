@@ -4,14 +4,6 @@ import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, Tou
 import { supabase } from '../utils/supabase';
 import { ThemeContext } from '../utils/theme';
 
-const PRONOUNS = [
-  'elle',
-  'il',
-  'iel',
-  'autre',
-  'je préfère ne pas préciser',
-];
-
 const QUESTIONS = [
   { key: 'name', label: 'Ton prénom', placeholder: 'Ton prénom', required: true },
   { key: 'age', label: 'Ton âge', placeholder: 'Ton âge', keyboardType: 'numeric' },
@@ -64,7 +56,6 @@ export default function Onboarding() {
   const [showOrientationOptions, setShowOrientationOptions] = useState(false);
   const [showRelationshipOptions, setShowRelationshipOptions] = useState(false);
   const [showMbtiOptions, setShowMbtiOptions] = useState(false);
-  const [showPronounsOptions, setShowPronounsOptions] = useState(false);
 
   const current = QUESTIONS[step];
 

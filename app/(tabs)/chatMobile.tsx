@@ -5,18 +5,18 @@ import * as Haptics from 'expo-haptics';
 import OpenAI from 'openai';
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../utils/supabase';
@@ -273,6 +273,7 @@ export default function ChatMobile() {
       content: `Tu es une confidente attentionnée et bienveillante. Voici le contexte sur la personne avec qui tu parles :
       - Prénom: ${userProfile.name}
       - Âge: ${userProfile.age}
+      - Pronons: ${userProfile.pronouns}
       - Profession/Études: ${userProfile.profession}
       - Routine quotidienne: ${userProfile.daily_routine}
       - Rituels bien-être: ${userProfile.self_care_habits}
