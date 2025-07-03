@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -7,6 +8,8 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
+  AppStateStatus,
   Dimensions,
   FlatList,
   Keyboard,
@@ -63,6 +66,13 @@ export default function ChatMobile() {
 
   const { theme } = React.useContext(ThemeContext);
 
+  const SESSION_STORAGE_KEY = 'currentSessionMessages';
+  const SESSION_START_KEY = 'currentSessionStart';
+
+  const [appState, setAppState] = useState(AppState.currentState);
+  const [currentSessionMessages, setCurrentSessionMessages] = useState<Message[]>([]);
+  const [currentSessionStart, setCurrentSessionStart] = useState<Date>(new Date());
+
   useEffect(() => {
     fetchUserProfile();
     fetchUserDoc();
@@ -83,6 +93,55 @@ export default function ChatMobile() {
       hideSub.remove();
     };
   }, []);
+
+  // Au démarrage, restaurer une session locale si elle existe
+  useEffect(() => {
+    const restoreSession = async () => {
+      const saved = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
+      const start = await AsyncStorage.getItem(SESSION_START_KEY);
+      if (saved && start) {
+        const messages = JSON.parse(saved);
+        const startDate = new Date(start);
+        if (messages.length > 0) {
+          // Générer et enregistrer le résumé de la session précédente
+          const summary = await generateConversationSummary(messages);
+          summary.date = startDate.toISOString().slice(0, 10);
+          summary.heure = startDate.toTimeString().slice(0, 5);
+          await updateUserDocWithSummary(summary);
+        }
+        await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
+        await AsyncStorage.removeItem(SESSION_START_KEY);
+      }
+      setCurrentSessionMessages([]);
+      setCurrentSessionStart(new Date());
+    };
+    restoreSession();
+  }, []);
+
+  // Gestion AppState pour détecter fermeture/background
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      if (appState.match(/active/) && nextAppState.match(/inactive|background/)) {
+        // L'app va en arrière-plan ou se ferme : on sauvegarde la session
+        if (currentSessionMessages.length > 0) {
+          const summary = await generateConversationSummary(currentSessionMessages);
+          summary.date = currentSessionStart.toISOString().slice(0, 10);
+          summary.heure = currentSessionStart.toTimeString().slice(0, 5);
+          await updateUserDocWithSummary(summary);
+          await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
+          await AsyncStorage.removeItem(SESSION_START_KEY);
+        }
+      }
+      if (appState.match(/inactive|background/) && nextAppState === 'active') {
+        // Nouvelle session
+        setCurrentSessionMessages([]);
+        setCurrentSessionStart(new Date());
+      }
+      setAppState(nextAppState);
+    };
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [appState, currentSessionMessages, currentSessionStart]);
 
   const fetchUserProfile = async () => {
     try {
@@ -105,6 +164,7 @@ export default function ChatMobile() {
     }
   };
 
+  // fetchUserDoc version précédente
   const fetchUserDoc = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -207,15 +267,26 @@ export default function ChatMobile() {
     }
   };
 
-  // Ajoute ou met à jour le résumé dans user_doc.resumes
+  // updateUserDocWithSummary version précédente
   const updateUserDocWithSummary = async (summary: any) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       let newUserDoc = userDoc && userDoc.resumes ? { ...userDoc } : { resumes: [] };
-      // Supprime tous les résumés du jour (date ISO)
-      newUserDoc.resumes = newUserDoc.resumes.filter((r: any) => r.date !== summary.date);
-      newUserDoc.resumes.unshift(summary);
+      // Ajoute le nouveau résumé en tête, sans supprimer les autres du même jour
+      newUserDoc.resumes = [
+        {
+          date: summary.date,
+          heure: summary.heure,
+          humeur: summary.humeur,
+          sujets: summary.sujets,
+          infos_cles: summary.infos_cles,
+          resume: summary.resume
+        },
+        ...newUserDoc.resumes
+      ];
+      // Limite à 50 blocs maximum
+      if (newUserDoc.resumes.length > 50) newUserDoc.resumes = newUserDoc.resumes.slice(0, 50);
       // Nettoyage du champ messages hérité de l'ancienne logique
       if ('messages' in newUserDoc) {
         delete newUserDoc.messages;
@@ -242,15 +313,22 @@ export default function ChatMobile() {
       return () => {
         saveSessionSummary();
       };
-    }, [messages, userDoc])
+    }, []) // dépendances vides, exécution unique au démontage
   );
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      saveSessionSummary();
+    const interval = setInterval(async () => {
+      if (currentSessionMessages.length > 0) {
+        const summary = await generateConversationSummary(currentSessionMessages);
+        summary.date = currentSessionStart.toISOString().slice(0, 10);
+        summary.heure = currentSessionStart.toTimeString().slice(0, 5);
+        await updateUserDocWithSummary(summary);
+        await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(currentSessionMessages));
+        await AsyncStorage.setItem(SESSION_START_KEY, currentSessionStart.toISOString());
+      }
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [messages, userDoc]);
+  }, [currentSessionMessages, currentSessionStart]);
 
   // Le prompt système lit les résumés
   const getSystemMessage = () => {
@@ -259,14 +337,28 @@ export default function ChatMobile() {
     if (userDoc && userDoc.resumes && userDoc.resumes.length > 0) {
       resumesBloc = userDoc.resumes.slice(0, 10);
     }
-    // Bloc check-in mental (3 derniers)
-    let checkinBloc = '';
+    // Bloc check-in mental (jour + 2 précédents)
+    const today = new Date().toISOString().slice(0, 10);
+    let checkinToday = null;
+    let lastCheckins = [];
     if (checkins && checkins.length > 0) {
-      const lastCheckins = checkins.slice(0, 3);
-      checkinBloc = '\nCheck-in mental des 3 derniers jours :\n' +
-        lastCheckins.map((c: any) => `- [${c.date}] Couleur : ${c.mot_cle}`).join('\n');
+      checkinToday = checkins.find((c: any) => c.date === today);
+      lastCheckins = checkins.filter((c: any) => c.date !== today).slice(0, 2);
+    }
+    let checkinBloc = '';
+    if (checkinToday) {
+      checkinBloc = `\nCheck-in mental du jour :\n- [${checkinToday.date}] Couleur : ${checkinToday.mot_cle}`;
     } else {
-      checkinBloc = '\nAucun check-in mental récent.';
+      checkinBloc = "\nAucun check-in mental pour aujourd'hui.";
+    }
+    if (lastCheckins.length > 0) {
+      checkinBloc += '\nCheck-ins précédents :\n' +
+        lastCheckins.map((c: any) => `- [${c.date}] Couleur : ${c.mot_cle}`).join('\n');
+    }
+    // Ajout d'une consigne explicite pour l'IA
+    let humeurInstruction = '';
+    if (checkinToday) {
+      humeurInstruction = `\n\nPrends en compte l'humeur du jour (${checkinToday.mot_cle}) pour adapter subtilement le ton de tes réponses, sans le mentionner explicitement à chaque message.`;
     }
     return {
       role: "system" as const,
@@ -294,7 +386,7 @@ export default function ChatMobile() {
       3. Respectueuse de ses rituels et habitudes
       4. Attentive à ses déclencheurs d'humeur
       5. Inspirante, en faisant écho à ses citations préférées
-      Utilise un ton amical et intime, comme une amie proche qui la connaît bien. Tutoie-la et utilise des emojis de façon modérée pour garder un style élégant et "clean girl".`
+      Utilise un ton amical et intime, comme une amie proche qui la connaît bien. Tutoie-la et utilise des emojis de façon modérée pour garder un style élégant et "clean girl".${humeurInstruction}`
     };
   };
 
@@ -345,6 +437,7 @@ export default function ChatMobile() {
     }
   };
 
+  // À chaque envoi de message, ajouter à la session et sauvegarder localement
   const onSend = async () => {
     if (!inputMessage.trim()) return;
     
@@ -364,6 +457,11 @@ export default function ChatMobile() {
     setInputMessage("");
     setIsLoading(true);
     Keyboard.dismiss();
+    // Ajout à la session locale
+    const newSessionMessages = [...currentSessionMessages, userMessage];
+    setCurrentSessionMessages(newSessionMessages);
+    await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSessionMessages));
+    await AsyncStorage.setItem(SESSION_START_KEY, currentSessionStart.toISOString());
 
     const apiMessages = [
       await getSystemMessage(),
