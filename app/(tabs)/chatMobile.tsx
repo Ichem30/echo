@@ -247,13 +247,22 @@ export default function ChatMobile() {
       const now = new Date();
       const date = now.toISOString().slice(0, 10);
       const heure = now.toTimeString().slice(0, 5);
+      // Ajout du timestamp du dernier message
+      let lastMessageTimestamp = null;
+      if (messages.length > 0) {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg.timestamp) {
+          lastMessageTimestamp = new Date(lastMsg.timestamp).getTime();
+        }
+      }
       return {
         date,
         heure,
         humeur: aiSummary.humeur,
         sujets: aiSummary.sujets,
         infos_cles: aiSummary.infos_cles,
-        resume: aiSummary.resume
+        resume: aiSummary.resume,
+        lastMessageTimestamp // <-- ici
       };
     } catch (error) {
       return {
@@ -262,7 +271,8 @@ export default function ChatMobile() {
         humeur: '',
         sujets: [],
         infos_cles: [],
-        resume: 'Résumé non disponible (erreur OpenAI)'
+        resume: 'Résumé non disponible (erreur OpenAI)',
+        lastMessageTimestamp: null
       };
     }
   };
@@ -273,7 +283,17 @@ export default function ChatMobile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       let newUserDoc = userDoc && userDoc.resumes ? { ...userDoc } : { resumes: [] };
-      // Ajoute le nouveau résumé en tête, sans supprimer les autres du même jour
+
+      // Vérification du timestamp du dernier message
+      const lastResume = newUserDoc.resumes[0];
+      if (lastResume && lastResume.lastMessageTimestamp === summary.lastMessageTimestamp) {
+        // Le résumé a déjà été enregistré pour cette session/messages
+        console.log('[Résumé] Annulé : même timestamp, aucun nouvel enregistrement.');
+        return;
+      }
+
+      // Ajout du nouveau résumé
+      console.log('[Résumé] Enregistrement d\'un nouveau résumé pour timestamp :', summary.lastMessageTimestamp);
       newUserDoc.resumes = [
         {
           date: summary.date,
@@ -281,7 +301,8 @@ export default function ChatMobile() {
           humeur: summary.humeur,
           sujets: summary.sujets,
           infos_cles: summary.infos_cles,
-          resume: summary.resume
+          resume: summary.resume,
+          lastMessageTimestamp: summary.lastMessageTimestamp // <-- ici aussi
         },
         ...newUserDoc.resumes
       ];

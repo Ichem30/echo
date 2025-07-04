@@ -6,6 +6,7 @@ import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, Touchabl
 import { supabase } from '../../utils/supabase';
 import { ThemeContext } from '../../utils/theme';
 import Avatar from '../components/Avatar';
+import CheckInModal from '../components/CheckInModal';
 import MoodTimeline from '../components/MoodTimeline';
 
 const openai = new OpenAI({
@@ -24,6 +25,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [checkins, setCheckins] = useState<any[]>([]);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -38,6 +40,7 @@ export default function HomePage() {
         if (profile) {
           loadOrGenerateQuote(profile);
           if (Array.isArray(profile.checkins)) setCheckins(profile.checkins);
+          checkIfCheckInNeeded(profile.checkins);
         }
       } else {
         setLoading(false);
@@ -77,6 +80,50 @@ export default function HomePage() {
     } finally {
       setLoadingQuote(false);
     }
+  };
+
+  const checkIfCheckInNeeded = (userCheckins: any[]) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const hasCheckInToday = userCheckins.some((checkin: any) => checkin.date === today);
+    
+    if (!hasCheckInToday) {
+      setShowCheckInModal(true);
+    }
+  };
+
+  const handleCheckInSelect = async (color: any) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const today = new Date().toISOString().slice(0, 10);
+      const newCheckIn = {
+        date: today,
+        couleur: color.color,
+        mot_cle: color.label
+      };
+
+      const updatedCheckins = [...checkins, newCheckIn];
+      setCheckins(updatedCheckins);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ checkins: updatedCheckins })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Erreur lors de la sauvegarde du check-in:', error);
+      }
+
+      setShowCheckInModal(false);
+    } catch (error) {
+      console.error('Erreur lors du check-in:', error);
+      setShowCheckInModal(false);
+    }
+  };
+
+  const handleCheckInClose = () => {
+    setShowCheckInModal(false);
   };
 
   // Construction du tableau des 7 derniers jours (du plus ancien au plus récent)
@@ -130,6 +177,12 @@ export default function HomePage() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      
+      <CheckInModal
+        visible={showCheckInModal}
+        onClose={handleCheckInClose}
+        onSelect={handleCheckInSelect}
+      />
     </SafeAreaView>
   );
 }
