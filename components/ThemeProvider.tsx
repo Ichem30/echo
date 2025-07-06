@@ -19,7 +19,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   useEffect(() => {
-    // Charger le thème et le mode sombre sauvegardés au démarrage
     Promise.all([
       AsyncStorage.getItem('theme'),
       AsyncStorage.getItem('darkMode')
