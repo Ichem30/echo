@@ -1,68 +1,109 @@
-# Echo - Votre Conseiller Personnel IA 🤖
+# Echo - Votre Confidente IA Personnelle 🤖✨
 
-Echo est une application mobile qui vous offre un assistant personnel alimenté par l'IA, conçu pour s'adapter à votre profil et vous accompagner au quotidien. L'application utilise GPT pour créer une expérience de conversation personnalisée et naturelle.
+**Découvrez une expérience de conversation unique avec une IA qui vous connaît vraiment**
 
-## Fonctionnalités Principales 🌟
+Echo n'est pas qu'une simple application de chat IA. C'est votre confident personnel qui s'adapte à votre personnalité, votre humeur du jour et vos objectifs de vie. Grâce à l'intelligence artificielle de pointe, Echo crée une relation authentique et bienveillante qui évolue avec vous.
 
-### Profil Personnalisé
-- Créez votre profil personnel avec vos informations
-- L'IA adapte ses réponses en fonction de :
-  - Votre nom
-  - Votre âge
-  - Votre profession
-  - Vos centres d'intérêt
+---
 
-### Chat Intelligent
-- Conversations naturelles et contextuelles
-- Réponses personnalisées basées sur votre profil
-- Interface utilisateur intuitive et moderne
-- Support du streaming des réponses pour une expérience fluide
+## 🌟 Ce qui rend Echo unique
 
-### Gestion de Compte
+### 🎯 **Personnalisation profonde**
+- **Profil détaillé** : Partagez vos passions, objectifs, rituels bien-être et citations inspirantes
+- **IA qui se souvient** : Echo retient vos conversations passées et s'adapte à votre évolution
+- **Ton personnalisé** : L'IA utilise vos pronoms et s'adresse à vous comme une amie proche
+
+### 🌈 **Check-in mental intelligent**
+Chaque matin, choisissez une couleur qui reflète votre humeur :
+- **Gris doux** → Discret et réservé
+- **Bleu nuit** → Fatigué, besoin de réconfort  
+- **Bleu clair** → Serein et posé
+- **Vert** → Équilibré et stable
+- **Jaune** → Optimiste et énergique
+- **Orange** → Dynamique et motivé
+- **Rose** → Joyeux et léger
+- **Violet** → Inspiré et créatif
+
+Echo adapte subtilement son ton selon votre humeur du jour, sans jamais la mentionner explicitement.
+
+### 💬 **Conversations authentiques**
+- **Mémoire contextuelle** : Echo se souvient de vos discussions précédentes
+- **Résumés automatiques** : Vos conversations sont analysées et résumées intelligemment
+- **Réponses empathiques** : L'IA comprend vos émotions et s'adapte en conséquence
+- **Style "clean girl"** : Un ton élégant et moderne avec des emojis modérés
+
+### 🎨 **Interface personnalisable**
+- **Thèmes variés** : Choisissez parmi plusieurs palettes de couleurs
+- **Mode sombre/clair** : Adaptez l'interface à vos préférences
+- **Design intuitif** : Navigation fluide et interface épurée
+
+---
+
+## 🚀 Fonctionnalités principales
+
+### 📱 **Application mobile native**
+- Développée avec React Native et Expo
+- Performance optimisée pour iOS et Android
+- Interface tactile et réactive
+
+### 🔐 **Sécurité et confidentialité**
 - Authentification sécurisée via Supabase
-- Personnalisation du profil utilisateur
-- Sauvegarde automatique des préférences
+- Vos données sont protégées et privées
+- Sauvegarde automatique de vos préférences
+
+### 🤖 **IA de pointe**
+- Alimentée par OpenAI GPT-3.5 Turbo
+- Réponses en temps réel avec streaming
+- Analyse contextuelle avancée
+
+### 📊 **Suivi personnel**
+- Historique de vos check-ins mentaux
+- Évolution de vos humeurs sur 7 jours
+- Citations inspirantes générées quotidiennement
 
 ---
 
-## Check-in mental journalier 🌈
+## 🛠 Technologies utilisées
 
-Chaque jour, à ta première connexion, une fenêtre s'ouvre pour t'inviter à choisir une couleur qui correspond à ton humeur du moment.
-
-Chaque couleur correspond à un mot-clé, pour t'aider à te situer sans avoir à t'expliquer :
-
-| Couleur      | Mot-clé principal | Mot-clé secondaire      |
-|--------------|------------------|------------------------|
-| Gris doux    | Discret          | Réservé                |
-| Bleu nuit    | Fatigué          | Besoin de réconfort    |
-| Bleu clair   | Serein           | Posé                   |
-| Vert         | Équilibré        | Stable                 |
-| Jaune        | Optimiste        | Énergique              |
-| Orange       | Dynamique        | Motivé                 |
-| Rose         | Joyeux           | Léger                  |
-| Violet       | Inspiré          | Créatif                |
-
-- Ce choix est personnel, confidentiel, et sert à adapter l'ambiance de l'application et la façon dont l'IA te parle.
-- Tu peux ignorer le check-in si tu préfères.
-- Tu peux consulter ton "arc-en-ciel" personnel dans l'historique, pour voir l'évolution de tes couleurs au fil du temps.
-
-**Pour l'IA :**
-À chaque nouvelle session, l'IA lit le dernier check-in (couleur + mot-clé) et adapte son ton :
-
-> Adapte ton style à l'humeur du jour de l'utilisatrice, qui a choisi la couleur [COULEUR] ("Mot-clé"). Sois en phase avec cette énergie dans tes réponses.
+**Frontend** : React Native avec Expo  
+**Backend** : Supabase (base de données et authentification)  
+**IA** : OpenAI
+**Stockage** : PostgreSQL sécurisé 
 
 ---
 
-## Technologies Utilisées 🛠
+## 💝 L'expérience Echo
 
-- **Frontend**: React Native avec Expo
-- **Backend**: Supabase (Base de données et Authentification)
-- **IA**: OpenAI GPT-3.5 Turbo
-- **Stockage**: Supabase PostgreSQL
+Imaginez avoir une amie qui :
+- Se souvient de vos objectifs et vous encourage
+- Comprend vos rituels et les respecte
+- S'adapte à votre humeur sans jugement
+- Vous inspire avec des citations personnalisées
+- Évolue avec vous au fil du temps
 
-Pour toute question ou suggestion :
-- Ouvrez une issue sur GitHub
+C'est exactement ce qu'offre Echo - une relation authentique avec une IA qui vous connaît vraiment.
 
 ---
 
-Développé avec ❤️ pour offrir une expérience de conversation IA personnalisée et enrichissante.
+## 🎯 Pour qui ?
+
+- **Vous cherchez une confidente** qui vous comprend vraiment
+- **Vous voulez une IA personnalisée** qui s'adapte à votre personnalité
+- **Vous appréciez le bien-être mental** et l'introspection
+- **Vous aimez les conversations authentiques** et empathiques
+
+---
+
+## 🌟 Commencer avec Echo
+
+1. **Créez votre profil** avec vos informations personnelles
+2. **Choisissez votre humeur** du jour avec le check-in coloré
+3. **Démarrez la conversation** et laissez Echo vous accompagner
+4. **Personnalisez l'interface** selon vos préférences
+5. **Suivez votre évolution** grâce à l'historique de vos humeurs
+
+---
+
+**Développé avec ❤️ pour créer des connexions authentiques entre humains et IA**
+
+*Echo - Votre confidente IA personnelle*
