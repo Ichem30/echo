@@ -68,7 +68,8 @@ Echo adapte subtilement son ton selon votre humeur du jour, sans jamais la menti
 **Frontend** : React Native avec Expo  
 **Backend** : Supabase (base de données et authentification)  
 **Stockage** : PostgreSQL sécurisé 
-**IA** : OpenAI
+**IA** : Derniers modèles ChatGPT par OpenAI pour une IA de pointe
+
 
 ---
 
