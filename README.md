@@ -1,4 +1,4 @@
-# Echo - Votre Confidente IA Personnelle 🤖✨
+# Echo - Votre Confident IA Personnel 🤖✨
 
 **Découvrez une expérience de conversation unique avec une IA qui vous connaît vraiment**
 
