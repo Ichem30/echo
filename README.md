@@ -52,7 +52,7 @@ Echo adapte subtilement son ton selon votre humeur du jour, sans jamais la menti
 - Sauvegarde automatique de vos préférences
 
 ### 🤖 **IA de pointe**
-- Alimentée par OpenAI GPT-3.5 Turbo
+- Alimentée par OpenAI
 - Réponses en temps réel avec streaming
 - Analyse contextuelle avancée
 
