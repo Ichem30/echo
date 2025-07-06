@@ -66,8 +66,7 @@ Echo adapte subtilement son ton selon votre humeur du jour, sans jamais la menti
 ## 🛠 Technologies utilisées
 
 **Frontend** : React Native avec Expo  
-**Backend** : Supabase (base de données et authentification)  
-**Stockage** : PostgreSQL sécurisé 
+**Backend // Stockage** : Supabase (base de données et authentification) // PostgreSQL sécurisé
 **IA** : Derniers modèles ChatGPT par OpenAI pour une IA de pointe
 
 
