@@ -5,20 +5,20 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    AppState,
-    AppStateStatus,
-    Dimensions,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  AppState,
+  AppStateStatus,
+  Dimensions,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../utils/supabase';
@@ -241,41 +241,32 @@ export default function ChatMobile() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      let newUserDoc = userDoc && userDoc.resumes ? { ...userDoc } : { resumes: [] };
 
-      // Vérification du timestamp du dernier message
-      const lastResume = newUserDoc.resumes[0];
-      if (lastResume && lastResume.lastMessageTimestamp === summary.lastMessageTimestamp) {
-        // Le résumé a déjà été enregistré pour cette session/messages
-        console.log('[Résumé] Annulé : même timestamp, aucun nouvel enregistrement.');
-        return;
-      }
+      // Récupère le user_doc actuel depuis Supabase
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('user_doc')
+        .eq('id', user.id)
+        .single();
 
-      // Ajout du nouveau résumé
-      console.log('[Résumé] Enregistrement d\'un nouveau résumé pour timestamp :', summary.lastMessageTimestamp);
-      newUserDoc.resumes = [
-        {
-          date: summary.date,
-          heure: summary.heure,
-          humeur: summary.humeur,
-          sujets: summary.sujets,
-          infos_cles: summary.infos_cles,
-          resume: summary.resume,
-          lastMessageTimestamp: summary.lastMessageTimestamp // <-- ici aussi
-        },
-        ...newUserDoc.resumes
+      let currentUserDoc = (profile && profile.user_doc) ? { ...profile.user_doc } : { resumes: [] };
+
+      // Ajoute le nouveau résumé en début de tableau
+      currentUserDoc.resumes = [
+        summary,
+        ...(currentUserDoc.resumes || [])
       ];
-      // Limite à 50 blocs maximum
-      if (newUserDoc.resumes.length > 50) newUserDoc.resumes = newUserDoc.resumes.slice(0, 50);
-      // Nettoyage du champ messages hérité de l'ancienne logique
-      if ('messages' in newUserDoc) {
-        delete newUserDoc.messages;
-      }
-      setUserDoc(newUserDoc);
+
+      // Limite à 50 résumés max
+      if (currentUserDoc.resumes.length > 50) currentUserDoc.resumes = currentUserDoc.resumes.slice(0, 50);
+
+      // Mets à jour user_doc sans écraser les autres champs
       await supabase
         .from('profiles')
-        .update({ user_doc: newUserDoc })
+        .update({ user_doc: currentUserDoc })
         .eq('id', user.id);
+
+      setUserDoc(currentUserDoc);
     } catch (error) {
       // gestion d'erreur
     }
@@ -452,7 +443,13 @@ export default function ChatMobile() {
         },
         body: JSON.stringify({ messages: apiMessages })
       });
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error('Réponse non JSON : ' + text);
+      }
       if (!response.ok) throw new Error(data.error || 'Erreur serveur');
       setMessages(prev => [...prev, {
         role: "assistant",

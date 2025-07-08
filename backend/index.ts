@@ -89,6 +89,7 @@ app.post('/api/gdpr/summary', authMiddleware, async (req: AuthenticatedRequest, 
       temperature: 0.3
     });
     const content = completion.choices[0]?.message?.content || '';
+    console.log('Réponse OpenAI brute :', content); // <-- LOG AJOUTÉ
     let summary;
     try {
       summary = JSON.parse(content);
