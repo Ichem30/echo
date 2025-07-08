@@ -10,7 +10,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://echo-8fh7i2636-inomibz-gmailcoms-projects.vercel.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://echo-ochre-eta.vercel.app"
       }
     },
     "preview": {
@@ -18,7 +18,7 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://echo-8fh7i2636-inomibz-gmailcoms-projects.vercel.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://echo-ochre-eta.vercel.app"
       },
       "autoIncrement": true
     }
