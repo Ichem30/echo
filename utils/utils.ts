@@ -1,13 +1,6 @@
-import Constants from 'expo-constants';
 
 export const generateAPIUrl = (relativePath: string) => {
-  const origin = Constants.experienceUrl.replace('exp://', 'http://');
-
   const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
-
-  if (process.env.NODE_ENV === 'development') {
-    return origin.concat(path);
-  }
 
   if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
     throw new Error(
@@ -17,3 +10,5 @@ export const generateAPIUrl = (relativePath: string) => {
 
   return process.env.EXPO_PUBLIC_API_BASE_URL.concat(path);
 };
+
+console.log('URL API utilisée :', generateAPIUrl('/api/chat'));

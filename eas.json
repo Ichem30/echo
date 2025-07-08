@@ -10,13 +10,16 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "http://localhost:3001"
+        "EXPO_PUBLIC_API_BASE_URL": "https://echo-8fh7i2636-inomibz-gmailcoms-projects.vercel.app"
       }
     },
     "preview": {
       "distribution": "internal"
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://echo-8fh7i2636-inomibz-gmailcoms-projects.vercel.app"
+      },
       "autoIncrement": true
     }
   },

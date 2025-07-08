@@ -15,27 +15,8 @@ console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY);
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Configuration CORS sécurisée
-const allowedOrigins = [
-  'exp://localhost:19000', // Expo Go local
-  'http://localhost:19006', // Expo web local
-];
-
-if (process.env.CORS_ORIGIN) {
-  allowedOrigins.push(process.env.CORS_ORIGIN);
-}
-
-app.use(cors({
-  origin: (origin, callback) => {
-    // Autoriser les requêtes sans origin (ex: mobile native)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true
-}));
+// Configuration CORS simple et universelle
+app.use(cors({ origin: '*', credentials: true }));
 
 // Middleware pour parser le JSON
 app.use(express.json());
