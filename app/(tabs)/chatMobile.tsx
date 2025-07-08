@@ -3,27 +3,27 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import OpenAI from 'openai';
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  AppState,
-  AppStateStatus,
-  Dimensions,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    AppState,
+    AppStateStatus,
+    Dimensions,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../utils/supabase';
 import { ThemeContext } from '../../utils/theme';
+import { generateAPIUrl } from '../../utils/utils';
 import UserProfileModal from '../components/UserProfileModal';
 
 const { width } = Dimensions.get('window');
@@ -34,10 +34,7 @@ if (!process.env.EXPO_PUBLIC_OPENAI_API_KEY) {
   Alert.alert('Erreur', 'Clé API OpenAI manquante');
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY || '',
-  dangerouslyAllowBrowser: true
-});
+// SUPPRIMER l'import OpenAI et toute initialisation liée
 
 const SYSTEM_MESSAGE = { role: "system" as const, content: "You are a helpful assistant" };
 
@@ -211,59 +208,21 @@ export default function ChatMobile() {
   // Fonction pour générer un résumé structuré de la session (enrichi)
   const generateConversationSummary = async (messages: Message[]): Promise<any> => {
     try {
-      const historique = messages.map((m: any) => {
-        const auteur = m.role === 'user' ? 'Utilisatrice' : m.role === 'assistant' ? 'Assistante' : 'Système';
-        return `${auteur} : ${m.content}`;
-      }).join('\n');
-      const prompt = `Voici l'historique d'une conversation entre une utilisatrice et son assistante IA. Résume la session en 4 points :\n1. Humeur générale de l'utilisatrice\n2. Sujets principaux abordés\n3. Informations clés à retenir sur l'utilisatrice (objectifs, préoccupations, événements importants, changements, etc.)\n4. Résumé synthétique de la discussion (2-3 phrases max)\nRéponds uniquement au format JSON : { "humeur": "...", "sujets": ["..."], "infos_cles": ["..."], "resume": "..." }\nHistorique :\n${historique}`;
-      console.log('[OpenAI][Résumé][Prompt]', prompt);
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: 'system', content: "Tu es une IA qui résume des conversations pour un journal utilisateur. Réponds toujours en JSON strict." },
-          { role: 'user', content: prompt }
-        ],
-        stream: false,
-        temperature: 0.3
+      // Récupérer le token JWT Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Utilisateur non authentifié');
+      const response = await fetch(generateAPIUrl('/api/gdpr/summary'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ messages })
       });
-      console.log('[OpenAI][Résumé][Réponse]', response);
-      const content = response.choices[0]?.message?.content || '';
-      let aiSummary;
-      try {
-        aiSummary = JSON.parse(content);
-      } catch (e) {
-        const match = content.match(/\{[\s\S]*\}/);
-        if (match) {
-          aiSummary = JSON.parse(match[0]);
-        } else {
-          aiSummary = {
-            humeur: '',
-            sujets: [],
-            infos_cles: [],
-            resume: content.slice(0, 300)
-          };
-        }
-      }
-      const now = new Date();
-      const date = now.toISOString().slice(0, 10);
-      const heure = now.toTimeString().slice(0, 5);
-      // Ajout du timestamp du dernier message
-      let lastMessageTimestamp = null;
-      if (messages.length > 0) {
-        const lastMsg = messages[messages.length - 1];
-        if (lastMsg.timestamp) {
-          lastMessageTimestamp = new Date(lastMsg.timestamp).getTime();
-        }
-      }
-      return {
-        date,
-        heure,
-        humeur: aiSummary.humeur,
-        sujets: aiSummary.sujets,
-        infos_cles: aiSummary.infos_cles,
-        resume: aiSummary.resume,
-        lastMessageTimestamp // <-- ici
-      };
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Erreur serveur');
+      return data.summary;
     } catch (error) {
       return {
         date: new Date().toISOString().slice(0, 10),
@@ -271,7 +230,7 @@ export default function ChatMobile() {
         humeur: '',
         sujets: [],
         infos_cles: [],
-        resume: 'Résumé non disponible (erreur OpenAI)',
+        resume: 'Résumé non disponible (erreur backend)',
         lastMessageTimestamp: null
       };
     }
@@ -443,35 +402,10 @@ export default function ChatMobile() {
     }
   };
 
-  const handleMobileResponse = async (messages: any[]) => {
-    try {
-      console.log('[OpenAI][Prompt complet]', messages);
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: messages,
-        stream: false,
-      });
-      console.log('[OpenAI][Réponse]', response);
-      const content = response.choices[0]?.message?.content || "";
-      return {
-        role: "assistant" as const,
-        content,
-        timestamp: new Date()
-      } as Message;
-    } catch (error) {
-      throw error;
-    }
-  };
-
   // À chaque envoi de message, ajouter à la session et sauvegarder localement
   const onSend = async () => {
     if (!inputMessage.trim()) return;
     
-    if (!process.env.EXPO_PUBLIC_OPENAI_API_KEY) {
-      Alert.alert('Erreur', 'Clé API OpenAI manquante');
-      return;
-    }
-
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
     const userMessage: Message = { 
@@ -489,6 +423,7 @@ export default function ChatMobile() {
     await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSessionMessages));
     await AsyncStorage.setItem(SESSION_START_KEY, currentSessionStart.toISOString());
 
+    // Construction du prompt complet
     const apiMessages = [
       await getSystemMessage(),
       ...messages.map(msg => ({
@@ -502,24 +437,28 @@ export default function ChatMobile() {
     ];
 
     try {
-      if (isWeb) {
-        const response = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: apiMessages,
-          stream: true,
-        });
-
-        let assistantMessage: Message = { 
-          role: "assistant", 
-          content: "",
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        await handleWebStream(response, assistantMessage);
-      } else {
-        const assistantMessage = await handleMobileResponse(apiMessages);
-        setMessages(prev => [...prev, assistantMessage]);
+      // Récupérer le token JWT Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error('Utilisateur non authentifié');
       }
+      // Appel à l'API backend sécurisé
+      const response = await fetch(generateAPIUrl('/api/chat'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ messages: apiMessages })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Erreur serveur');
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date()
+      }]);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       if (!firstPromptSent) setFirstPromptSent(true);
     } catch (error) {
