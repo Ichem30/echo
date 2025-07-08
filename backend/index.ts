@@ -33,6 +33,11 @@ app.get('/api/protected', authMiddleware, (req: AuthenticatedRequest, res) => {
 
 // Côté app mobile, il faudra appeler ce backend sécurisé (et non plus OpenAI directement)
 app.post('/api/chat', authMiddleware, async (req: AuthenticatedRequest, res) => {
+  console.log('API /api/chat appelée', {
+    method: req.method,
+    headers: req.headers,
+    body: req.body
+  });
   try {
     const { messages } = req.body;
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
