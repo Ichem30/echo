@@ -1,24 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  AppState,
-  AppStateStatus,
-  Dimensions,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    AppState,
+    AppStateStatus,
+    Dimensions,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from '../../utils/supabase';
@@ -34,17 +33,26 @@ if (!process.env.EXPO_PUBLIC_OPENAI_API_KEY) {
   Alert.alert('Erreur', 'Clé API OpenAI manquante');
 }
 
-// SUPPRIMER l'import OpenAI et toute initialisation liée
-
 const SYSTEM_MESSAGE = { role: "system" as const, content: "You are a helpful assistant" };
 
 type Message = {
+  id?: string;
   role: 'system' | 'user' | 'assistant';
   content: string;
   timestamp?: Date;
 };
 
+type Session = {
+  id: string;
+  user_id: string;
+  started_at: string;
+  ended_at?: string;
+  summary?: string;
+  checkin_today?: any;
+};
+
 export default function ChatMobile() {
+  console.log('ChatMobile monté');
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: 'Bonjour ! Comment puis-je vous aider aujourd\'hui ?', timestamp: new Date() }
   ]);
@@ -58,22 +66,21 @@ export default function ChatMobile() {
   const tabBarHeight = useBottomTabBarHeight();
   const [firstPromptSent, setFirstPromptSent] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const [lastSavedMessageCount, setLastSavedMessageCount] = useState(0);
   const [checkins, setCheckins] = useState<any[]>([]);
+
+  // Nouvelles variables pour le système de sessions
+  const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
 
   const { theme } = React.useContext(ThemeContext);
 
-  const SESSION_STORAGE_KEY = 'currentSessionMessages';
-  const SESSION_START_KEY = 'currentSessionStart';
-
   const [appState, setAppState] = useState(AppState.currentState);
-  const [currentSessionMessages, setCurrentSessionMessages] = useState<Message[]>([]);
-  const [currentSessionStart, setCurrentSessionStart] = useState<Date>(new Date());
 
   useEffect(() => {
     fetchUserProfile();
     fetchUserDoc();
     fetchCheckins();
+    createNewSession();
   }, []);
 
   useEffect(() => {
@@ -91,54 +98,152 @@ export default function ChatMobile() {
     };
   }, []);
 
-  // Au démarrage, restaurer une session locale si elle existe
-  useEffect(() => {
-    const restoreSession = async () => {
-      const saved = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
-      const start = await AsyncStorage.getItem(SESSION_START_KEY);
-      if (saved && start) {
-        const messages = JSON.parse(saved);
-        const startDate = new Date(start);
-        if (messages.length > 0) {
-          // Générer et enregistrer le résumé de la session précédente
-          const summary = await generateConversationSummary(messages);
-          summary.date = startDate.toISOString().slice(0, 10);
-          summary.heure = startDate.toTimeString().slice(0, 5);
-          await updateUserDocWithSummary(summary);
-        }
-        await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
-        await AsyncStorage.removeItem(SESSION_START_KEY);
-      }
-      setCurrentSessionMessages([]);
-      setCurrentSessionStart(new Date());
-    };
-    restoreSession();
-  }, []);
-
   // Gestion AppState pour détecter fermeture/background
   useEffect(() => {
+    console.log('useEffect AppState déclenché, appState:', appState);
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      console.log('handleAppStateChange:', appState, '->', nextAppState);
       if (appState.match(/active/) && nextAppState.match(/inactive|background/)) {
-        // L'app va en arrière-plan ou se ferme : on sauvegarde la session
-        if (currentSessionMessages.length > 0) {
-          const summary = await generateConversationSummary(currentSessionMessages);
-          summary.date = currentSessionStart.toISOString().slice(0, 10);
-          summary.heure = currentSessionStart.toTimeString().slice(0, 5);
-          await updateUserDocWithSummary(summary);
-          await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
-          await AsyncStorage.removeItem(SESSION_START_KEY);
+        // L'app va en arrière-plan ou se ferme : on génère le résumé de la session
+        if (currentSession && messages.length > 1) {
+          console.log('AppState: génération résumé avant background');
+          await generateSessionSummary();
         }
       }
       if (appState.match(/inactive|background/) && nextAppState === 'active') {
-        // Nouvelle session
-        setCurrentSessionMessages([]);
-        setCurrentSessionStart(new Date());
+        console.log('AppState: nouvelle session après retour au premier plan');
+        await createNewSession();
       }
       setAppState(nextAppState);
     };
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-  }, [appState, currentSessionMessages, currentSessionStart]);
+  }, [appState, currentSession, messages]);
+
+  // Créer une nouvelle session
+  const createNewSession = async () => {
+    try {
+      setSessionLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        console.error('Utilisateur non authentifié');
+        return;
+      }
+
+      const response = await fetch(generateAPIUrl('/api/sessions'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la création de la session');
+      }
+
+      const data = await response.json();
+      setCurrentSession(data.session);
+      
+      // Charger les messages de la session si elle existe déjà
+      if (data.session.id) {
+        await loadSessionMessages(data.session.id);
+      }
+
+    } catch (error) {
+      console.error('Erreur création session:', error);
+    } finally {
+      setSessionLoading(false);
+    }
+  };
+
+  // Charger les messages d'une session
+  const loadSessionMessages = async (sessionId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const response = await fetch(generateAPIUrl(`/api/sessions/${sessionId}/messages`), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.messages && data.messages.length > 0) {
+          const formattedMessages = data.messages.map((msg: any) => ({
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setMessages(formattedMessages);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur chargement messages:', error);
+    }
+  };
+
+  // Ajouter un message à la session
+  const addMessageToSession = async (message: Message) => {
+    if (!currentSession?.id) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const response = await fetch(generateAPIUrl('/api/messages'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          session_id: currentSession.id,
+          role: message.role,
+          content: message.content
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.message;
+      }
+    } catch (error) {
+      console.error('Erreur ajout message:', error);
+    }
+  };
+
+  // Générer le résumé de la session
+  const generateSessionSummary = async () => {
+    if (!currentSession?.id || messages.length < 2) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const response = await fetch(generateAPIUrl(`/api/sessions/${currentSession.id}/summary`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Résumé généré:', data.summary);
+      }
+    } catch (error) {
+      console.error('Erreur génération résumé:', error);
+    }
+  };
 
   const fetchUserProfile = async () => {
     try {
@@ -161,7 +266,6 @@ export default function ChatMobile() {
     }
   };
 
-  // fetchUserDoc version précédente
   const fetchUserDoc = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -205,101 +309,136 @@ export default function ChatMobile() {
     fetchUserProfile();
   };
 
-  // Fonction pour générer un résumé structuré de la session (enrichi)
-  const generateConversationSummary = async (messages: Message[]): Promise<any> => {
+  const handleError = async (error: any) => {
+    console.error("Error:", error);
+    const errorMessage = error?.message || "Une erreur s'est produite";
+    const errorMsg: Message = { 
+      role: "assistant", 
+      content: `Désolé, ${errorMessage}. Veuillez réessayer.`,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, errorMsg]);
+    await addMessageToSession(errorMsg);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+  };
+
+  const handleWebStream = async (response: any, assistantMessage: Message) => {
+    try {
+      for await (const chunk of response) {
+        if (!chunk.choices[0]?.delta?.content) continue;
+        const content = chunk.choices[0].delta.content;
+        assistantMessage.content += content;
+        setMessages(prev => [
+          ...prev.slice(0, -1),
+          { ...assistantMessage }
+        ]);
+      }
+    } catch (streamError) {
+      handleError(streamError);
+    }
+  };
+
+  // À chaque envoi de message, ajouter à la session
+  const onSend = async () => {
+    if (!inputMessage.trim() || !currentSession?.id) return;
+    
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    const userMessage: Message = { 
+      role: "user", 
+      content: inputMessage,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage("");
+    setIsLoading(true);
+    Keyboard.dismiss();
+
+    // Ajouter le message utilisateur à la session
+    await addMessageToSession(userMessage);
+
+    // Construction du prompt complet
+    const apiMessages = [
+      await getSystemMessage(),
+      ...messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      {
+        role: userMessage.role,
+        content: userMessage.content
+      }
+    ];
+
     try {
       // Récupérer le token JWT Supabase
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      if (!token) throw new Error('Utilisateur non authentifié');
-      const response = await fetch(generateAPIUrl('/api/gdpr/summary'), {
+      if (!token) {
+        throw new Error('Utilisateur non authentifié');
+      }
+      // Appel à l'API backend sécurisé
+      const response = await fetch(generateAPIUrl('/api/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ messages })
+        body: JSON.stringify({ messages: apiMessages })
       });
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error('Réponse non JSON : ' + text);
+      }
       if (!response.ok) throw new Error(data.error || 'Erreur serveur');
-      return data.summary;
-    } catch (error) {
-      return {
-        date: new Date().toISOString().slice(0, 10),
-        heure: new Date().toISOString().slice(11, 19),
-        humeur: '',
-        sujets: [],
-        infos_cles: [],
-        resume: 'Résumé non disponible (erreur backend)',
-        lastMessageTimestamp: null
+      
+      const assistantMessage: Message = {
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date()
       };
-    }
-  };
-
-  // updateUserDocWithSummary version précédente
-  const updateUserDocWithSummary = async (summary: any) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Récupère le user_doc actuel depuis Supabase
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('user_doc')
-        .eq('id', user.id)
-        .single();
-
-      let currentUserDoc = (profile && profile.user_doc) ? { ...profile.user_doc } : { resumes: [] };
-
-      // Ajoute le nouveau résumé en début de tableau
-      currentUserDoc.resumes = [
-        summary,
-        ...(currentUserDoc.resumes || [])
-      ];
-
-      // Limite à 50 résumés max
-      if (currentUserDoc.resumes.length > 50) currentUserDoc.resumes = currentUserDoc.resumes.slice(0, 50);
-
-      // Mets à jour user_doc sans écraser les autres champs
-      await supabase
-        .from('profiles')
-        .update({ user_doc: currentUserDoc })
-        .eq('id', user.id);
-
-      setUserDoc(currentUserDoc);
+      
+      setMessages(prev => [...prev, assistantMessage]);
+      
+      // Ajouter le message assistant à la session
+      await addMessageToSession(assistantMessage);
+      
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (!firstPromptSent) setFirstPromptSent(true);
     } catch (error) {
-      // gestion d'erreur
+      handleError(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Sauvegarde à la sortie du chat et périodiquement
-  const saveSessionSummary = async () => {
-    if (messages.length < 2) return;
-    const summary = await generateConversationSummary(messages);
-    await updateUserDocWithSummary(summary);
+  useEffect(() => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  }, [messages]);
+
+  const formatTime = (date?: Date) => {
+    if (!date) return '';
+    return date.toLocaleTimeString('fr-FR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
   };
 
+  // Sauvegarde à la sortie du chat
   useFocusEffect(
     React.useCallback(() => {
       return () => {
-        saveSessionSummary();
+        if (currentSession && messages.length > 1) {
+          generateSessionSummary();
+        }
       };
-    }, []) // dépendances vides, exécution unique au démontage
+    }, [currentSession, messages]) // Ajout des dépendances
   );
-
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (currentSessionMessages.length > 0) {
-        const summary = await generateConversationSummary(currentSessionMessages);
-        summary.date = currentSessionStart.toISOString().slice(0, 10);
-        summary.heure = currentSessionStart.toTimeString().slice(0, 5);
-        await updateUserDocWithSummary(summary);
-        await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(currentSessionMessages));
-        await AsyncStorage.setItem(SESSION_START_KEY, currentSessionStart.toISOString());
-      }
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [currentSessionMessages, currentSessionStart]);
 
   // Le prompt système lit les résumés
   const getSystemMessage = () => {
@@ -366,118 +505,18 @@ export default function ChatMobile() {
     };
   };
 
-  const handleError = async (error: any) => {
-    console.error("Error:", error);
-    const errorMessage = error?.message || "Une erreur s'est produite";
-    setMessages(prev => [...prev, { 
-      role: "assistant", 
-      content: `Désolé, ${errorMessage}. Veuillez réessayer.`,
-      timestamp: new Date()
-    }]);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-  };
-
-  const handleWebStream = async (response: any, assistantMessage: Message) => {
-    try {
-      for await (const chunk of response) {
-        if (!chunk.choices[0]?.delta?.content) continue;
-        const content = chunk.choices[0].delta.content;
-        assistantMessage.content += content;
-        setMessages(prev => [
-          ...prev.slice(0, -1),
-          { ...assistantMessage }
-        ]);
-      }
-    } catch (streamError) {
-      handleError(streamError);
-    }
-  };
-
-  // À chaque envoi de message, ajouter à la session et sauvegarder localement
-  const onSend = async () => {
-    if (!inputMessage.trim()) return;
-    
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    const userMessage: Message = { 
-      role: "user", 
-      content: inputMessage,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage("");
-    setIsLoading(true);
-    Keyboard.dismiss();
-    // Ajout à la session locale
-    const newSessionMessages = [...currentSessionMessages, userMessage];
-    setCurrentSessionMessages(newSessionMessages);
-    await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSessionMessages));
-    await AsyncStorage.setItem(SESSION_START_KEY, currentSessionStart.toISOString());
-
-    // Construction du prompt complet
-    const apiMessages = [
-      await getSystemMessage(),
-      ...messages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      {
-        role: userMessage.role,
-        content: userMessage.content
-      }
-    ];
-
-    try {
-      // Récupérer le token JWT Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) {
-        throw new Error('Utilisateur non authentifié');
-      }
-      // Appel à l'API backend sécurisé
-      const response = await fetch(generateAPIUrl('/api/chat'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ messages: apiMessages })
-      });
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error('Réponse non JSON : ' + text);
-      }
-      if (!response.ok) throw new Error(data.error || 'Erreur serveur');
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: data.response,
-        timestamp: new Date()
-      }]);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (!firstPromptSent) setFirstPromptSent(true);
-    } catch (error) {
-      handleError(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (flatListRef.current) {
-      flatListRef.current.scrollToEnd({ animated: true });
-    }
-  }, [messages]);
-
-  const formatTime = (date?: Date) => {
-    if (!date) return '';
-    return date.toLocaleTimeString('fr-FR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
+  if (sessionLoading) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.text }]}>
+            Initialisation de la session...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top']}>
@@ -640,5 +679,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 18,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
   },
 });

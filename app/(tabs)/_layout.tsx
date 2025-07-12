@@ -1,44 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
-import { useContext } from 'react';
 import { Platform } from 'react-native';
-import { ThemeContext } from '../../utils/theme';
 
 export default function TabLayout() {
-  const { theme, isDarkMode } = useContext(ThemeContext);
-
   return (
     <Tabs
       screenOptions={{
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: theme.background,
-          shadowColor: '#000',
-          shadowOffset: {
-            width: 0,
-            height: 1,
-          },
-          shadowOpacity: 0.1,
-          shadowRadius: 1,
-          elevation: 1,
-        },
-        headerTitleStyle: {
-          fontWeight: '600',
-          fontSize: 18,
-          color: theme.text,
-        },
-        headerTitleAlign: 'center',
+        headerShown: false,
+        lazy: true,
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: Platform.OS === 'ios' ? (isDarkMode ? '#000000' : 'transparent') : theme.background,
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#fff',
           borderTopWidth: 0,
           elevation: 0,
           height: 85,
           paddingBottom: 20,
         },
         tabBarBackground: () =>
-          Platform.OS === 'ios' && !isDarkMode ? (
+          Platform.OS === 'ios' ? (
             <BlurView
               tint="light"
               intensity={95}
@@ -51,19 +31,19 @@ export default function TabLayout() {
               }}
             />
           ) : null,
-        tabBarActiveTintColor: theme.primary,
-        tabBarInactiveTintColor: theme.secondary,
+        tabBarActiveTintColor: '#007AFF',
+        tabBarInactiveTintColor: '#888',
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Accueil',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <Ionicons 
               name="home" 
               size={24} 
@@ -77,7 +57,6 @@ export default function TabLayout() {
         name="chatMobile"
         options={{
           title: 'Chat IA',
-          headerShown: false,
           tabBarIcon: ({ color }) => (
             <Ionicons 
               name="chatbubbles" 
@@ -92,7 +71,6 @@ export default function TabLayout() {
         name="account"
         options={{
           title: 'Compte',
-          headerShown: false,
           tabBarIcon: ({ color }) => (
             <Ionicons 
               name="person" 

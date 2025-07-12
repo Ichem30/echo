@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useColorScheme as useDeviceColorScheme } from 'react-native';
 import { ThemeContext, ThemeName, themes } from '../utils/theme';
 
@@ -41,16 +41,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     inputBackground: isDarkMode ? '#2D2F30' : themes[themeName].inputBackground,
   };
 
+  const contextValue = useMemo(() => ({
+    theme: currentTheme,
+    themeName,
+    setTheme,
+    isDarkMode,
+    toggleDarkMode,
+  }), [currentTheme, themeName, isDarkMode]);
+
   return (
-    <ThemeContext.Provider
-      value={{
-        theme: currentTheme,
-        themeName,
-        setTheme,
-        isDarkMode,
-        toggleDarkMode,
-      }}
-    >
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );
