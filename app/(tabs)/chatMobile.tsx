@@ -437,7 +437,7 @@ export default function ChatMobile() {
           generateSessionSummary();
         }
       };
-    }, [currentSession, messages]) // Ajout des dépendances
+    }, [currentSession]) // Correction : on retire 'messages' des dépendances
   );
 
   // Le prompt système lit les résumés
