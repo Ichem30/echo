@@ -47,6 +47,9 @@ app.post('/api/sessions', authMiddleware, async (req: AuthenticatedRequest, res)
       return res.status(401).json({ error: 'Utilisateur non authentifié' });
     }
 
+    // LOG UID POUR DEBUG
+    console.log('userId envoyé à Supabase:', userId);
+
     // Créer la session
     const { data: session, error } = await supabase
       .from('sessions')
