@@ -64,3 +64,9 @@ out/
 *~
 
 app-example
+
+# Ignore tous les fichiers .md
+*.md
+
+# Sauf README.md
+!README.md
