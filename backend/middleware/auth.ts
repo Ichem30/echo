@@ -7,7 +7,16 @@ dotenv.config();
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Fonction pour créer un client Supabase avec token utilisateur
+const createSupabaseClient = (accessToken: string) => {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  });
+};
 
 export interface AuthenticatedRequest extends Request {
   user?: any;
@@ -27,6 +36,9 @@ export const authMiddleware = async (
   }
 
   try {
+    // Créer un client Supabase avec le token utilisateur
+    const supabase = createSupabaseClient(token);
+    
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data?.user) {
       res.status(401).json({ error: 'Token invalide' });

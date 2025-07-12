@@ -13,10 +13,20 @@ dotenv.config(); // surcharge si .env local
 console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
 console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY);
 
-// Initialiser Supabase
+// Configuration Supabase (sans client global)
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Fonction pour créer un client Supabase avec token utilisateur
+const createSupabaseClient = (accessToken: string) => {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  });
+};
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -43,9 +53,15 @@ app.get('/api/protected', authMiddleware, (req: AuthenticatedRequest, res) => {
 app.post('/api/sessions', authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Utilisateur non authentifié' });
+    const accessToken = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!userId || !accessToken) {
+      res.status(401).json({ error: 'Utilisateur non authentifié' });
+      return;
     }
+
+    // Créer un client Supabase avec le token utilisateur
+    const supabase = createSupabaseClient(accessToken);
 
     // LOG UID POUR DEBUG
     console.log('userId envoyé à Supabase:', userId);
@@ -62,7 +78,8 @@ app.post('/api/sessions', authMiddleware, async (req: AuthenticatedRequest, res)
 
     if (error) {
       console.error('Erreur création session:', error);
-      return res.status(500).json({ error: 'Erreur lors de la création de la session' });
+      res.status(500).json({ error: 'Erreur lors de la création de la session' });
+      return;
     }
 
     // Récupérer le checkin du jour depuis profiles
@@ -93,10 +110,15 @@ app.post('/api/messages', authMiddleware, async (req: AuthenticatedRequest, res)
   try {
     const { session_id, role, content } = req.body;
     const userId = req.user?.id;
+    const accessToken = req.headers.authorization?.replace('Bearer ', '');
 
-    if (!userId || !session_id || !role || !content) {
-      return res.status(400).json({ error: 'Paramètres manquants' });
+    if (!userId || !accessToken || !session_id || !role || !content) {
+      res.status(400).json({ error: 'Paramètres manquants' });
+      return;
     }
+
+    // Créer un client Supabase avec le token utilisateur
+    const supabase = createSupabaseClient(accessToken);
 
     // Vérifier que la session appartient à l'utilisateur
     const { data: session, error: sessionError } = await supabase
@@ -107,7 +129,8 @@ app.post('/api/messages', authMiddleware, async (req: AuthenticatedRequest, res)
       .single();
 
     if (sessionError || !session) {
-      return res.status(404).json({ error: 'Session non trouvée' });
+      res.status(404).json({ error: 'Session non trouvée' });
+      return;
     }
 
     // Ajouter le message
@@ -125,7 +148,8 @@ app.post('/api/messages', authMiddleware, async (req: AuthenticatedRequest, res)
 
     if (error) {
       console.error('Erreur ajout message:', error);
-      return res.status(500).json({ error: 'Erreur lors de l\'ajout du message' });
+      res.status(500).json({ error: 'Erreur lors de l\'ajout du message' });
+      return;
     }
 
     res.json({ message });
@@ -141,10 +165,15 @@ app.get('/api/sessions/:sessionId/messages', authMiddleware, async (req: Authent
   try {
     const { sessionId } = req.params;
     const userId = req.user?.id;
+    const accessToken = req.headers.authorization?.replace('Bearer ', '');
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Utilisateur non authentifié' });
+    if (!userId || !accessToken) {
+      res.status(401).json({ error: 'Utilisateur non authentifié' });
+      return;
     }
+
+    // Créer un client Supabase avec le token utilisateur
+    const supabase = createSupabaseClient(accessToken);
 
     // Vérifier que la session appartient à l'utilisateur
     const { data: session, error: sessionError } = await supabase
@@ -155,7 +184,8 @@ app.get('/api/sessions/:sessionId/messages', authMiddleware, async (req: Authent
       .single();
 
     if (sessionError || !session) {
-      return res.status(404).json({ error: 'Session non trouvée' });
+      res.status(404).json({ error: 'Session non trouvée' });
+      return;
     }
 
     // Récupérer les messages
@@ -167,7 +197,8 @@ app.get('/api/sessions/:sessionId/messages', authMiddleware, async (req: Authent
 
     if (error) {
       console.error('Erreur récupération messages:', error);
-      return res.status(500).json({ error: 'Erreur lors de la récupération des messages' });
+      res.status(500).json({ error: 'Erreur lors de la récupération des messages' });
+      return;
     }
 
     res.json({ messages });
@@ -183,10 +214,15 @@ app.post('/api/sessions/:sessionId/summary', authMiddleware, async (req: Authent
   try {
     const { sessionId } = req.params;
     const userId = req.user?.id;
+    const accessToken = req.headers.authorization?.replace('Bearer ', '');
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Utilisateur non authentifié' });
+    if (!userId || !accessToken) {
+      res.status(401).json({ error: 'Utilisateur non authentifié' });
+      return;
     }
+
+    // Créer un client Supabase avec le token utilisateur
+    const supabase = createSupabaseClient(accessToken);
 
     // Vérifier que la session appartient à l'utilisateur
     const { data: session, error: sessionError } = await supabase
@@ -197,7 +233,8 @@ app.post('/api/sessions/:sessionId/summary', authMiddleware, async (req: Authent
       .single();
 
     if (sessionError || !session) {
-      return res.status(404).json({ error: 'Session non trouvée' });
+      res.status(404).json({ error: 'Session non trouvée' });
+      return;
     }
 
     // Récupérer tous les messages de la session
@@ -209,11 +246,13 @@ app.post('/api/sessions/:sessionId/summary', authMiddleware, async (req: Authent
 
     if (messagesError) {
       console.error('Erreur récupération messages:', messagesError);
-      return res.status(500).json({ error: 'Erreur lors de la récupération des messages' });
+      res.status(500).json({ error: 'Erreur lors de la récupération des messages' });
+      return;
     }
 
     if (!messages || messages.length === 0) {
-      return res.status(400).json({ error: 'Aucun message à résumer' });
+      res.status(400).json({ error: 'Aucun message à résumer' });
+      return;
     }
 
     // Générer le résumé via OpenAI
@@ -264,7 +303,8 @@ app.post('/api/sessions/:sessionId/summary', authMiddleware, async (req: Authent
 
     if (updateError) {
       console.error('Erreur mise à jour session:', updateError);
-      return res.status(500).json({ error: 'Erreur lors de la sauvegarde du résumé' });
+      res.status(500).json({ error: 'Erreur lors de la sauvegarde du résumé' });
+      return;
     }
 
     res.json({ summary });
@@ -279,10 +319,15 @@ app.post('/api/sessions/:sessionId/summary', authMiddleware, async (req: Authent
 app.get('/api/sessions', authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user?.id;
+    const accessToken = req.headers.authorization?.replace('Bearer ', '');
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Utilisateur non authentifié' });
+    if (!userId || !accessToken) {
+      res.status(401).json({ error: 'Utilisateur non authentifié' });
+      return;
     }
+
+    // Créer un client Supabase avec le token utilisateur
+    const supabase = createSupabaseClient(accessToken);
 
     const { data: sessions, error } = await supabase
       .from('sessions')
@@ -292,7 +337,8 @@ app.get('/api/sessions', authMiddleware, async (req: AuthenticatedRequest, res) 
 
     if (error) {
       console.error('Erreur récupération sessions:', error);
-      return res.status(500).json({ error: 'Erreur lors de la récupération des sessions' });
+      res.status(500).json({ error: 'Erreur lors de la récupération des sessions' });
+      return;
     }
 
     res.json({ sessions });
