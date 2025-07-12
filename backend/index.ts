@@ -63,10 +63,71 @@ app.post('/api/sessions', authMiddleware, async (req: AuthenticatedRequest, res)
     // Créer un client Supabase avec le token utilisateur
     const supabase = createSupabaseClient(accessToken);
 
-    // LOG UID POUR DEBUG
-    console.log('userId envoyé à Supabase:', userId);
+    // 1. Générer les résumés manquants pour les sessions précédentes
+    // On cible les sessions de l'utilisateur sans résumé, triées par started_at croissant
+    const { data: sessionsToSummarize, error: errorSessionsToSummarize } = await supabase
+      .from('sessions')
+      .select('id, started_at, ended_at')
+      .eq('user_id', userId)
+      .is('summary', null)
+      .not('ended_at', 'is', null)
+      .order('started_at', { ascending: true });
 
-    // Créer la session
+    if (errorSessionsToSummarize) {
+      console.error('Erreur récupération sessions à résumer:', errorSessionsToSummarize);
+    }
+
+    for (const session of sessionsToSummarize || []) {
+      // Récupérer les messages de la session
+      const { data: messages, error: errorMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('session_id', session.id)
+        .order('timestamp', { ascending: true });
+      if (errorMessages || !messages || messages.length === 0) {
+        continue;
+      }
+      // Générer le résumé via OpenAI
+      const historique = messages.map((m: any) => {
+        const auteur = m.role === 'user' ? 'Utilisatrice' : m.role === 'assistant' ? 'Assistante' : 'Système';
+        return `${auteur} : ${m.content}`;
+      }).join('\n');
+      const prompt = `Voici l'historique d'une conversation entre une utilisatrice et son assistante IA. Résume la session en 4 points :\n1. Humeur générale de l'utilisatrice\n2. Sujets principaux abordés\n3. Informations clés à retenir sur l'utilisatrice (objectifs, préoccupations, événements importants, changements, etc.)\n4. Résumé synthétique de la discussion (2-3 phrases max)\nRéponds uniquement au format JSON : { "humeur": "...", "sujets": ["..."], "infos_cles": ["..."], "resume": "..." }\nHistorique :\n${historique}`;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: "Tu es une IA qui résume des conversations pour un journal utilisateur. Réponds toujours en JSON strict." },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 500,
+        temperature: 0.3
+      });
+      const content = completion.choices[0]?.message?.content || '';
+      let summary;
+      try {
+        summary = JSON.parse(content);
+      } catch (e) {
+        const match = content.match(/\{[\s\S]*\}/);
+        if (match) {
+          summary = JSON.parse(match[0]);
+        } else {
+          summary = {
+            humeur: '',
+            sujets: [],
+            infos_cles: [],
+            resume: content.slice(0, 300)
+          };
+        }
+      }
+      // Stocker le résumé dans la session
+      await supabase
+        .from('sessions')
+        .update({ summary: JSON.stringify(summary) })
+        .eq('id', session.id);
+    }
+
+    // 2. Créer la nouvelle session
     const { data: session, error } = await supabase
       .from('sessions')
       .insert({
@@ -92,11 +153,26 @@ app.post('/api/sessions', authMiddleware, async (req: AuthenticatedRequest, res)
     const today = new Date().toISOString().slice(0, 10);
     const checkinToday = profile?.checkins?.find((c: any) => c.date === today);
 
+    // 3. Récupérer les 5 derniers résumés de sessions terminées
+    const { data: lastSessions, error: errorLastSessions } = await supabase
+      .from('sessions')
+      .select('id, summary, ended_at')
+      .eq('user_id', userId)
+      .not('summary', 'is', null)
+      .not('ended_at', 'is', null)
+      .order('ended_at', { ascending: false })
+      .limit(5);
+
+    if (errorLastSessions) {
+      console.error('Erreur récupération derniers résumés:', errorLastSessions);
+    }
+
     res.json({
       session: {
         ...session,
         checkin_today: checkinToday
-      }
+      },
+      last_summaries: (lastSessions || []).map(s => ({ id: s.id, summary: s.summary, ended_at: s.ended_at }))
     });
 
   } catch (error: any) {
