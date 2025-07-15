@@ -402,7 +402,7 @@ export default function ChatMobile() {
       };
       
       setMessages(prev => [...prev, assistantMessage]);
-      
+
       // Ajouter le message assistant à la session
       await addMessageToSession(assistantMessage);
       

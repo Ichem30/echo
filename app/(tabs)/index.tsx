@@ -17,6 +17,39 @@ const openai = new OpenAI({
 const QUOTE_KEY = 'daily_quote';
 const QUOTE_DATE_KEY = 'daily_quote_date';
 
+// Composant FlameIcon local
+function FlameIcon({ active }: { active: boolean }) {
+  return (
+    <View style={{ marginLeft: 4 }}>
+      <View style={{
+        width: 22,
+        height: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+        <View style={{
+          width: 16,
+          height: 20,
+          borderRadius: 8,
+          backgroundColor: active ? '#FF3B30' : '#C0C0C0',
+          transform: [{ rotate: '-10deg' }],
+          position: 'absolute',
+          bottom: 0,
+        }} />
+        <View style={{
+          width: 10,
+          height: 12,
+          borderRadius: 5,
+          backgroundColor: active ? '#FFD580' : '#E0E0E0',
+          position: 'absolute',
+          bottom: 2,
+          left: 3,
+        }} />
+      </View>
+    </View>
+  );
+}
+
 export default function HomePage() {
   const { theme } = useContext(ThemeContext);
   const router = useRouter();
@@ -151,6 +184,19 @@ export default function HomePage() {
     }
   });
 
+  // Calcul du streak (jours consécutifs de check-in jusqu'à aujourd'hui)
+  let streakCount = 0;
+  let streakDate = new Date();
+  while (true) {
+    const dateStr = streakDate.toISOString().slice(0, 10);
+    if (checkins.find(c => c.date === dateStr)) {
+      streakCount++;
+      streakDate.setDate(streakDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}><ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 60 }} /></SafeAreaView>
@@ -161,6 +207,11 @@ export default function HomePage() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}> 
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
         <View style={styles.centered}>
+          {/* Badge streak en haut à droite */}
+          <View style={{ position: 'absolute', top: 24, right: 24, flexDirection: 'row', alignItems: 'center', zIndex: 20 }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 18, color: theme.text }}>{streakCount}</Text>
+            <FlameIcon active={streakCount > 1} />
+          </View>
           <MoodTimeline checkins={checkins7days} />
           <View style={styles.avatarContainer}>
             <Avatar size={160} url={profile?.avatar_url || null} onUpload={() => {}} editable={false} />
