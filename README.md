@@ -70,6 +70,7 @@ Echo adapte subtilement son ton selon votre humeur du jour, sans jamais la menti
 - **IA** : Derniers modèles ChatGPT par OpenAI pour une IA de pointe
 - **Base de données** : PostgreSQL sécurisé
 
+
 ---
 
 ## 💝 L'expérience Echo
