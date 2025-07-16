@@ -1,6 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import getRawBody from 'raw-body';
 import Stripe from 'stripe';
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2022-11-15' });
 
@@ -11,7 +18,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Stripe attend un buffer, pas un objet JSON
-  const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body as any);
+  let buf;
+  try {
+    buf = await getRawBody(req);
+  } catch (err) {
+    console.error('Erreur lecture raw body:', err);
+    return res.status(400).send('Invalid body');
+  }
 
   const sig = req.headers['stripe-signature'] as string;
   let event;
