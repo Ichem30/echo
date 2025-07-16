@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import OpenAI from 'openai';
 import path from 'path';
+import Stripe from 'stripe';
 import { AuthenticatedRequest, authMiddleware } from './middleware/auth';
 
 // Charger les variables d'environnement (supporte .env à la racine ou dans backend/)
@@ -521,6 +522,84 @@ app.post('/api/gdpr/summary', authMiddleware, async (req: AuthenticatedRequest, 
     console.error('Erreur OpenAI résumé:', error);
     res.status(500).json({ error: 'Erreur interne OpenAI résumé' });
   }
+});
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2022-11-15' });
+
+// Liste des plans disponibles
+const PLANS = [
+  {
+    id: 'weekly',
+    name: 'Echo Premium Weekly',
+    price_id: 'price_1RlWqV05iCMRVP2kd9j8kxUX',
+    coupon_id: 'MI6mO5Ma',
+    description: '0,99$ la première semaine puis 3,99$/semaine'
+  },
+  {
+    id: 'annual',
+    name: 'Echo Premium Annual',
+    price_id: 'price_1RlWkR05iCMRVP2kpolz6fIT',
+    coupon_id: 'ZFPCGrwE',
+    description: '54,95$/an au lieu de 207$ (-76%)'
+  }
+];
+
+// Endpoint pour lister les plans
+app.get('/api/billing/plans', (req, res) => {
+  res.json({ plans: PLANS });
+});
+
+// Endpoint pour créer une session Stripe Checkout
+app.post('/api/billing/subscribe', authMiddleware, async (req, res) => {
+  const { plan_id } = req.body;
+  const user = req.user;
+  const plan = PLANS.find(p => p.id === plan_id);
+  if (!plan) {
+    return res.status(400).json({ error: 'Plan inconnu' });
+  }
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      customer_email: user.email,
+      line_items: [
+        {
+          price: plan.price_id,
+          quantity: 1
+        }
+      ],
+      discounts: plan.coupon_id ? [{ coupon: plan.coupon_id }] : [],
+      success_url: 'https://ton-backend.com/success', // À adapter
+      cancel_url: 'https://ton-backend.com/cancel',   // À adapter
+      metadata: {
+        user_id: user.id,
+        plan_id: plan.id
+      }
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('Erreur création session Stripe:', err);
+    res.status(500).json({ error: 'Erreur Stripe' });
+  }
+});
+
+// Endpoint pour recevoir les webhooks Stripe
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
+  } catch (err) {
+    console.error('Erreur signature webhook Stripe:', err);
+    return res.status(400).send(`Webhook Error: ${err}`);
+  }
+  // Traiter les événements Stripe ici (ex: abonnement créé, annulé, etc.)
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    // TODO: mettre à jour le statut premium/free dans la base (Supabase)
+    console.log('Abonnement Stripe réussi pour:', session);
+  }
+  res.json({ received: true });
 });
 
 app.listen(port, () => {

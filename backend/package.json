@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon --watch './**/*.ts' --exec ts-node index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "stripe:webhook": "stripe listen --forward-to localhost:3001/api/billing/webhook"
   },
   "keywords": [],
   "author": "",
@@ -17,7 +18,8 @@
     "cors": "^2.8.5",
     "dotenv": "^17.1.0",
     "express": "^5.1.0",
-    "openai": "^5.8.3"
+    "openai": "^5.8.3",
+    "stripe": "^12.18.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
