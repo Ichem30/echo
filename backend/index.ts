@@ -35,7 +35,58 @@ const port = process.env.PORT || 3001;
 // Configuration CORS simple et universelle
 app.use(cors({ origin: '*', credentials: true }));
 
-// Middleware pour parser le JSON
+// Endpoint pour recevoir les webhooks Stripe (doit être AVANT express.json())
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
+  } catch (err) {
+    console.error('Erreur signature webhook Stripe:', err);
+    return res.status(400).send(`Webhook Error: ${err}`);
+  }
+
+  async function updateUserPlan(userId: string, plan: string) {
+    const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_ANON_KEY || '');
+    const { error } = await supabase
+      .from('profiles')
+      .update({ subscription_plan: plan })
+      .eq('id', userId);
+    if (error) {
+      console.error('Erreur MAJ plan Supabase:', error);
+    } else {
+      console.log(`Statut abonnement mis à jour pour ${userId} : ${plan}`);
+    }
+  }
+
+  // Gestion des événements Stripe
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const userId = session.metadata?.user_id;
+    const planId = session.metadata?.plan_id;
+    if (userId && planId) {
+      await updateUserPlan(userId, planId);
+    }
+  }
+  if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.paused') {
+    const subscription = event.data.object as Stripe.Subscription;
+    const userId = subscription.metadata?.user_id;
+    if (userId) {
+      await updateUserPlan(userId, 'free');
+    }
+  }
+  if (event.type === 'customer.subscription.updated') {
+    const subscription = event.data.object as Stripe.Subscription;
+    const userId = subscription.metadata?.user_id;
+    if (userId) {
+      const plan = subscription.status === 'active' ? (subscription.metadata?.plan_id || 'premium') : 'free';
+      await updateUserPlan(userId, plan);
+    }
+  }
+  res.json({ received: true });
+});
+
+// Middleware pour parser le JSON (doit être APRÈS le webhook Stripe)
 app.use(express.json());
 
 // Endpoint de test
@@ -569,8 +620,8 @@ app.post('/api/billing/subscribe', authMiddleware, async (req, res) => {
         }
       ],
       discounts: plan.coupon_id ? [{ coupon: plan.coupon_id }] : [],
-      success_url: 'https://ton-backend.com/success', // À adapter
-      cancel_url: 'https://ton-backend.com/cancel',   // À adapter
+      success_url: 'myapp://payment-success',
+      cancel_url: 'myapp://payment-cancel',
       metadata: {
         user_id: user.id,
         plan_id: plan.id
@@ -581,57 +632,6 @@ app.post('/api/billing/subscribe', authMiddleware, async (req, res) => {
     console.error('Erreur création session Stripe:', err);
     res.status(500).json({ error: 'Erreur Stripe' });
   }
-});
-
-// Endpoint pour recevoir les webhooks Stripe
-app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch (err) {
-    console.error('Erreur signature webhook Stripe:', err);
-    return res.status(400).send(`Webhook Error: ${err}`);
-  }
-
-  async function updateUserPlan(userId: string, plan: string) {
-    const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_ANON_KEY || '');
-    const { error } = await supabase
-      .from('profiles')
-      .update({ subscription_plan: plan })
-      .eq('id', userId);
-    if (error) {
-      console.error('Erreur MAJ plan Supabase:', error);
-    } else {
-      console.log(`Statut abonnement mis à jour pour ${userId} : ${plan}`);
-    }
-  }
-
-  // Gestion des événements Stripe
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const userId = session.metadata?.user_id;
-    const planId = session.metadata?.plan_id;
-    if (userId && planId) {
-      await updateUserPlan(userId, planId);
-    }
-  }
-  if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.paused') {
-    const subscription = event.data.object as Stripe.Subscription;
-    const userId = subscription.metadata?.user_id;
-    if (userId) {
-      await updateUserPlan(userId, 'free');
-    }
-  }
-  if (event.type === 'customer.subscription.updated') {
-    const subscription = event.data.object as Stripe.Subscription;
-    const userId = subscription.metadata?.user_id;
-    if (userId) {
-      const plan = subscription.status === 'active' ? (subscription.metadata?.plan_id || 'premium') : 'free';
-      await updateUserPlan(userId, plan);
-    }
-  }
-  res.json({ received: true });
 });
 
 app.listen(port, () => {
