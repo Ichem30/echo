@@ -584,7 +584,7 @@ app.post('/api/billing/subscribe', authMiddleware, async (req, res) => {
 });
 
 // Endpoint pour recevoir les webhooks Stripe
-app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
   try {
@@ -593,11 +593,43 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), (req
     console.error('Erreur signature webhook Stripe:', err);
     return res.status(400).send(`Webhook Error: ${err}`);
   }
-  // Traiter les événements Stripe ici (ex: abonnement créé, annulé, etc.)
+
+  async function updateUserPlan(userId: string, plan: string) {
+    const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_ANON_KEY || '');
+    const { error } = await supabase
+      .from('profiles')
+      .update({ subscription_plan: plan })
+      .eq('id', userId);
+    if (error) {
+      console.error('Erreur MAJ plan Supabase:', error);
+    } else {
+      console.log(`Statut abonnement mis à jour pour ${userId} : ${plan}`);
+    }
+  }
+
+  // Gestion des événements Stripe
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    // TODO: mettre à jour le statut premium/free dans la base (Supabase)
-    console.log('Abonnement Stripe réussi pour:', session);
+    const session = event.data.object as Stripe.Checkout.Session;
+    const userId = session.metadata?.user_id;
+    const planId = session.metadata?.plan_id;
+    if (userId && planId) {
+      await updateUserPlan(userId, planId);
+    }
+  }
+  if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.paused') {
+    const subscription = event.data.object as Stripe.Subscription;
+    const userId = subscription.metadata?.user_id;
+    if (userId) {
+      await updateUserPlan(userId, 'free');
+    }
+  }
+  if (event.type === 'customer.subscription.updated') {
+    const subscription = event.data.object as Stripe.Subscription;
+    const userId = subscription.metadata?.user_id;
+    if (userId) {
+      const plan = subscription.status === 'active' ? (subscription.metadata?.plan_id || 'premium') : 'free';
+      await updateUserPlan(userId, plan);
+    }
   }
   res.json({ received: true });
 });
