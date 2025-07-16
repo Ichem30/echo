@@ -1,18 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
-import express from 'express';
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2022-11-15' });
-const app = express();
 
-app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  console.log('--- Stripe Webhook Debug ---');
-  console.log('Type de req.body :', typeof req.body, Buffer.isBuffer(req.body));
-  console.log('Headers:', req.headers);
-  const sig = req.headers['stripe-signature'];
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    res.status(405).send('Method Not Allowed');
+    return;
+  }
+
+  // Stripe attend un buffer, pas un objet JSON
+  const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body as any);
+
+  const sig = req.headers['stripe-signature'] as string;
   let event;
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET!);
   } catch (err) {
     console.error('Erreur signature webhook Stripe:', err);
     return res.status(400).send(`Webhook Error: ${err}`);
@@ -55,6 +59,4 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
     }
   }
   res.json({ received: true });
-});
-
-export default app; 
+} 
