@@ -6,6 +6,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '20
 const app = express();
 
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('--- Stripe Webhook Debug ---');
+  console.log('Type de req.body :', typeof req.body, Buffer.isBuffer(req.body));
+  console.log('Headers:', req.headers);
   const sig = req.headers['stripe-signature'];
   let event;
   try {
